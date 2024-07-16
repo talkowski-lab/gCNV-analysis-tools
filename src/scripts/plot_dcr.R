@@ -1,3 +1,17 @@
+# dCR plotting pipeline
+#
+# Generate dCR plots for possible de novo CNVs or a group of clustered CNVs.
+# Usage: Rscript plot_dcr.R CALLSET [DENOVO] BINS PED DCRS OUTDIR
+# * CALLSET - If DENOVO is given, the full callset produced by the gCNV
+#             pipeline. Otherwise, the subset of the callset for the variants
+#             to plot
+# * DENOVO  - Optional. de novo calls to plot
+# * BINS    - Genomic bins file used by the gCNV pipeline
+# * PED     - Pedigree file
+# * DCRS    - List of paths, one per line, to the dCR matrices
+# * OUTDIR  - Output directory. Must not exist
+
+# Functions -------------------------------------------------------------------
 # Parse the command line arguments.
 parse_args <- function(argv) {
     argc <- length(argv)
@@ -9,7 +23,7 @@ parse_args <- function(argv) {
         args <- as.list(argv)
     }
     names(args) <- c(
-        "callset", "denovo", "pedigree", "dcr_list", "bins", "outdir"
+        "callset", "denovo", "bins", "pedigree", "dcrs", "outdir"
     )
 
     args
@@ -300,10 +314,11 @@ set.seed(42)
 
 callset <- read_callset(args$callset)
 pedigree <- read_pedigree(args$pedigree)
-dcrs <- read_dcr_list(args$dcr_list)
+dcrs <- read_dcr_list(args$dcrs)
 bins <- read_gcnv_bins(args$bins)
 setup_outdir(args$outdir)
 
+# Run de novo plotting workflow ----------------------------------------------
 if (!is.null(argv$denovo)) {
     message("Running de novo plotting workflow")
     denovo <- read_callset(argv$callset)
@@ -337,6 +352,7 @@ if (!is.null(argv$denovo)) {
     quit(save = "no")
 }
 
+# Run variant group plotting workflow ----------------------------------------
 message("Running variant plotting workflow")
 callset <- pedigree[, list(sample_id, phenotype, family_id)][
   callset, on = c(sample_id = "sample"), mult = "first"]
