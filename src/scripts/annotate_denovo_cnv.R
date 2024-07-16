@@ -1,4 +1,4 @@
-# de novo CNV annotatation pipeline
+# de novo CNV annotation pipeline
 #
 # Annotate de novo CNVs from a gCNV callset.
 # Usage: Rscript annotate_denovo_cnv.R CALLSET BINS PED DCRS NPROC OUTPUT
