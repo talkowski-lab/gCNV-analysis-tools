@@ -1,6 +1,6 @@
 wdls = $(wildcard wdl/*.wdl)
 
-.PHONY : validate_wdl pkg check clean docs
+.PHONY : validate_wdl build check clean install
 gelpers_version := $(shell grep -F Version src/gelpers/DESCRIPTION | cut -d ' ' -f 2)
 
 validate_wdl:
@@ -16,14 +16,14 @@ ifneq ($(strip $(wdls)),)
 	done
 endif
 
-pkg:
-	R CMD build gelpers
+build:
+	R -e 'roxygen2::roxygenize("src/gelpers")'
+	R CMD build src/gelpers
 
-check:
+check: build
 	R CMD check gelpers_$(gelpers_version).tar.gz
 
-docs:
-	R -e 'roxygen2::roxygenize("src/gelpers")'
-
+install: build
+	R CMD INSTALL gelpers_$(gelpers_version).tar.gz
 clean:
 	rm -rf *.Rcheck
