@@ -128,7 +128,7 @@ output <- argv[[6]]
 
 library(data.table)
 library(gelpers)
-library(GRanges)
+library(GenomicRanges)
 library(parallel)
 
 # Read inputs -----------------------------------------------------------------
@@ -166,7 +166,7 @@ maternal_calls <- raw_calls[sample %in% ped$maternal_id, ]
 mcols(gr_m)$sample <- maternal_calls$sample
 
 child_calls[, `:=`(
-    cov_p = get_coverage(gr_c, gr_p, "paternal")
+    cov_p = get_coverage(gr_c, gr_p, "paternal"),
     cov_m = get_coverage(gr_c, gr_m, "maternal")
 )]
 
