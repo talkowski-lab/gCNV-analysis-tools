@@ -1,0 +1,20 @@
+Package: gelpers
+Title: gCNV Helpers
+Version: 0.0.0.9000
+Authors@R: 
+    person("Justin", "Lim", , "jlim21@mgh.harvard.edu", role = c("aut", "cre"))
+Description: Analysis package for the gCNV pipeline.
+Depends:
+    methods,
+    R (>= 4.0.0)
+Imports:
+    assertify,
+    data.table (>= 1.15.4),
+    GenomicRanges (>= 1.56.0),
+    IRanges (>= 2.38.0),
+    Rsamtools (>= 2.20.0),
+    S4Vectors (>= 0.42.0),
+    utils
+License: GPL (>= 3)
+Encoding: UTF-8
+RoxygenNote: 7.3.2
