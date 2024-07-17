@@ -58,6 +58,5 @@ get_samples_dcr.gregion <- function(x,
         cols <- c(cols, colnames(dcr)[!colnames(dcr) %in% cols])
     }
 
-    ..cols <- NULL
-    dcr[, ..cols]
+    dcr[, cols, with = FALSE]
 }
