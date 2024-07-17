@@ -10,6 +10,14 @@
 # * OUTPUT  - Where to write the output
 
 # Functions -------------------------------------------------------------------
+# Create a GRanges object for a CNV callset
+cnvs_to_granges <- function(x) {
+    gr <- df_to_gr(x)
+    strand(gr) <- ifelse(x$svtype == "DUP", "+", "-")
+
+    gr
+}
+
 # Compute the fraction of each CNV in x that is overlapped by the parental CNVs
 # in y.
 get_coverage <- function(x, y, relation = c("paternal", "maternal")) {
@@ -157,13 +165,13 @@ child_calls <- child_calls[ped[, list(sample_id, paternal_id, maternal_id)],
 child_calls <- child_calls[!(is.na(paternal_id) | is.na(maternal_id)), ]
 
 # Get preliminary de novo calls based on overlap ------------------------------
-gr_c <- df_to_gr(child_calls)
+gr_c <- cnvs_to_granges(child_calls)
 mcols(gr_c) <- gr_c[, list(paternal_id, maternal_id)]
 
 paternal_calls <- raw_calls[sample %in% ped$paternal_id, ]
-mcols(gr_p)$sample <- paternal_calls$sample
 maternal_calls <- raw_calls[sample %in% ped$maternal_id, ]
-mcols(gr_m)$sample <- maternal_calls$sample
+gr_p <- cnvs_to_granges(paternal_calls)
+gr_m <- cnvs_to_granges(maternal_calls)
 
 child_calls[, `:=`(
     cov_p = get_coverage(gr_c, gr_p, "paternal"),
