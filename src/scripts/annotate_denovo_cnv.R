@@ -21,7 +21,7 @@ cnvs_to_granges <- function(x) {
 # Compute the fraction of each CNV in x that is overlapped by the parental CNVs
 # in y.
 get_coverage <- function(x, y, relation = c("paternal", "maternal")) {
-    relation <- match.args(relation)
+    relation <- match.arg(relation)
     ol <- findOverlaps(x, y)
     x_mcols <- mcols(x[queryHits(ol)])
     y_mcols <- mcols(y[subjectHits(ol)])
