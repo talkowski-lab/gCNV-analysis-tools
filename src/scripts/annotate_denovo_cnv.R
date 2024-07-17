@@ -166,7 +166,6 @@ child_calls <- child_calls[!(is.na(paternal_id) | is.na(maternal_id)), ]
 
 # Get preliminary de novo calls based on overlap ------------------------------
 gr_c <- cnvs_to_granges(child_calls)
-mcols(gr_c) <- gr_c[, list(paternal_id, maternal_id)]
 
 paternal_calls <- raw_calls[sample %in% ped$paternal_id, ]
 maternal_calls <- raw_calls[sample %in% ped$maternal_id, ]
