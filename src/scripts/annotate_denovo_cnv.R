@@ -201,6 +201,11 @@ child_calls[,
 dn <- child_calls[inheritance == "denovo"]
 
 # Gather dCR evidence ---------------------------------------------------------
+dn <- raw_calls[, list(paternal_id = sample, paternal_batch = batch)][
+    dn, on = "paternal_id", mult = "first"]
+dn <- raw_calls[, list(maternal_id = sample, maternal_batch = batch)][
+    dn, on = "maternal_id", mult = "first"]
+
 rg_info <- mclapply(
     seq_len(nrow(dn)),
     \(i) get_denovo_evidence(as.list(dn[i, ]), dcrs),
