@@ -91,7 +91,8 @@ get_batch_dcr.gregion <- function(x, paths, bound_dcr = TRUE) {
         column
     }
 
-    x[, names(.SD) := lapply(.SD, fn), .SDcols = !c("chr", "start", "end")]
+    cols <- colnames(x)[!colnames(x) %in% c("chr", "start", "end")]
+    x[, (cols) := lapply(.SD, fn), .SDcols = cols]
 
     x
 }
