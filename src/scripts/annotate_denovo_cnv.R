@@ -70,7 +70,8 @@ get_denovo_evidence <- function(call_info, dcr_map) {
             return(regenotype(NULL))
         }
 
-        dcrs[[i]] <- dcr
+        cols <- setdiff(colnames(dcr), trio_ids[!trio_ids %in% samples_i])
+        dcrs[[i]] <- dcr[, cols, with = FALSE]
     }
 
     coord_cols <- c("chr", "start", "end")
