@@ -143,6 +143,9 @@ library(parallel)
 raw_calls <- read_callset(callset_path)
 bins <- read_gcnv_bins(bins_path)
 ped <- read_pedigree(ped_path)
+ped <- ped[sample_id %in% raw_calls$sample &
+           paternal_id %in% raw_calls$sample &
+           maternal_id %in% raw_calls$sample]
 dcrs <- read_dcr_list(dcrs_path)
 
 # Recalibrate offspring CNV frequency to parents' -----------------------------
