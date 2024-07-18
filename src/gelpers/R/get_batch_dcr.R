@@ -95,7 +95,8 @@ get_batch_dcr.gregion <- function(x, paths, bound_dcr = TRUE) {
         text = c(header, records),
         header = TRUE,
         sep = "\t",
-        check.names = FALSE
+        check.names = FALSE,
+        comment.char = ""
     )
 
     out
