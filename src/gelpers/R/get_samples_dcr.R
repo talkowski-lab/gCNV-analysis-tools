@@ -35,9 +35,11 @@ get_samples_dcr.gregion <- function(x,
                                     samples,
                                     include_bg = FALSE,
                                     bound_dcr = TRUE) {
-    assert(is_flag(include_bg))
     assert(is.character(samples))
     assert(length(samples) > 0)
+    assert(!any(is.na(samples)), msg = "`NA` samples are not allowed")
+    assert(is_flag(include_bg))
+    assert(!is.na(include_bg))
 
     dcr <- get_batch_dcr(x, paths, bound_dcr)
     if (nrow(dcr) == 0) {

@@ -30,7 +30,9 @@ get_batch_dcr <- function(x, paths, bound_dcr = TRUE) {
 get_batch_dcr.gregion <- function(x, paths, bound_dcr = TRUE) {
     assert(is.character(paths))
     assert(length(paths) > 0)
+    assert(!any(is.na(paths)), msg = "`NA` paths are not allowed")
     assert(is_flag(bound_dcr))
+    assert(!is.na(bound_dcr))
 
     dcrs <- vector(mode = "list", length = length(paths))
     for (i in seq_along(paths)) {
