@@ -109,7 +109,7 @@ get_batch_dcr.gregion <- function(x, paths, bound_dcr = TRUE) {
     if (length(cols) == 0) {
         return(x)
     }
-    x[cols] <- lapply(x[cols], .bound_dcr_col)
+    x[cols] <- lapply(x[cols], \(y) .bound_dcr_col(y, lower, upper))
 
     x
 }
