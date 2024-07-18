@@ -43,7 +43,7 @@ read_pedigree <- function(path) {
     x$phenotype <- as.integer(x$phenotype)
     x[x$phenotype == 0L | x$phenotype == -9L, "phenotype"] <- NA
 
-    x[x$sex != "1" | x$sex != "2", "sex"] <- NA
+    x[!x$sex %in% c("1", "2"), "sex"] <- NA
     x$sex <- as.integer(x$sex)
 
     # Some pedigrees have duplicate sample IDs with different attributes. We
