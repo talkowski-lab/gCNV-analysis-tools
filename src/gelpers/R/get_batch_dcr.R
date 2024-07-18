@@ -78,12 +78,8 @@ get_batch_dcr.gregion <- function(x, paths, bound_dcr = TRUE) {
     header <- Rsamtools::headerTabix(tabix_con)$header
     if (is.null(header) || length(header) == 0) {
         header <- character()
-    } else {
-        header <- strsplit(header, split = "\t", fixed = TRUE) |>
-            unlist()
     }
-    records <- Rsamtools::scanTabix(tabix_con, param = param)[[1]] |>
-        strsplit(split = "\t", fixed = TRUE)
+    records <- Rsamtools::scanTabix(tabix_con, param = param)[[1]]
 
     if (length(records) == 0) {
         if (length(header) == 0) {
@@ -95,11 +91,12 @@ get_batch_dcr.gregion <- function(x, paths, bound_dcr = TRUE) {
         return(out)
     }
 
-    out <- do.call("rbind", records) |>
-        as.data.frame()
-    if (length(header) == ncol(out)) {
-        colnames(out) <- header
-    }
+    out <- read.table(
+        text = c(header, records),
+        header = TRUE,
+        sep = "\t",
+        check.names = FALSE
+    )
 
     out
 }
