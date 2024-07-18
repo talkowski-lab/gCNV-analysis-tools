@@ -10,7 +10,7 @@ read_callset(path)
 \item{path}{\code{character(1)}. Path to the callset.}
 }
 \value{
-\code{data.table} or signals an error if required columns are
+\code{data.frame} or signals an error if required columns are
   missing.
 }
 \description{

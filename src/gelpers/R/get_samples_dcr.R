@@ -11,7 +11,7 @@
 #' @param include_bg If \code{TRUE}, all of the other samples not among
 #'   \code{samples} will be included in the returned \code{data.table}.
 #'   Otherwise, only the requested samples are returned.
-#' @returns A \code{data.table} with the portion of the dCR matrix overlapping
+#' @returns A \code{data.frame} with the portion of the dCR matrix overlapping
 #'   the query region. The first three columns will be \code{'chr'},
 #'   \code{'start'}, and \code{'end'}, corresponding to the dCR ranges. The
 #'   next \var{N} columns (where \var{N} is the number samples requested) will
@@ -58,5 +58,5 @@ get_samples_dcr.gregion <- function(x,
         cols <- c(cols, colnames(dcr)[!colnames(dcr) %in% cols])
     }
 
-    dcr[, cols, with = FALSE]
+    dcr[cols]
 }

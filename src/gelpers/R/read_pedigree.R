@@ -23,10 +23,10 @@
 #'
 #' @export
 #' @param path Path to the pedigree file.
-#' @returns \code{data.table}.
+#' @returns A \code{data.frame}.
 read_pedigree <- function(path) {
     assert(is_string(path))
-    x <- data.table::fread(
+    x <- utils::read.table(
         file = path,
         header = TRUE,
         sep = "\t",
@@ -34,30 +34,23 @@ read_pedigree <- function(path) {
             "family_id", "sample_id", "paternal_id", "maternal_id", "sex",
             "phenotype"
         ),
-        colClasses = rep("character", 6),
-        showProgress = FALSE
+        colClasses = rep("character", 6)
     )
-    x <- x[nzchar(sample_id)]
+    x <- x[nzchar(x$sample_id), ]
 
-    phenotype <- NULL
-    sex <- NULL
     valid_phen <- c("-9", "0", "1", "2")
-    x[!phenotype %in% valid_phen, phenotype := "0"]
-    x[, phenotype := as.integer(phenotype)]
-    x[phenotype == 0L | phenotype == -9L, phenotype := NA]
+    x[!x$phenotype %in% valid_phen, "phenotype"] <- "0"
+    x$phenotype <- as.integer(x$phenotype)
+    x[x$phenotype == 0L | x$phenotype == -9L, "phenotype"] <- NA
 
-    x[sex != "1" | sex != "2", sex := NA]
-    x[, sex := as.integer(sex)]
+    x[x$sex != "1" | x$sex != "2", "sex"] <- NA
+    x$sex <- as.integer(x$sex)
 
     # Some pedigrees have duplicate sample IDs with different attributes. We
-    # want to remove duplicates, but keep families together so we key on both
-    # family ID and sample ID before taking a unique (which we assume keeps the
-    # first occurence).
-    family_id <- NULL
-    sample_id <- NULL
-    data.table::setkey(x, family_id, sample_id)
-    x <- unique(x, by = "sample_id")
-    data.table::setkey(x, sample_id)
+    # want to remove duplicates, but keep families together so we sort on both
+    # family ID and sample ID before taking a unique.
+    x <- x[order(x$family_id, x$sample_id), ]
+    x <- x[!duplicated(x["sample_id"]), ]
 
     x
 }

@@ -14,19 +14,15 @@
 #' @returns A \code{GBins} object.
 read_gcnv_bins <- function(path) {
     assert(is_string(path))
-    x <- data.table::fread(
+    x <- utils::read.table(
         path,
         header = FALSE,
         sep = "\t",
-        select = 1:3,
-        col.names = c("chr", "start", "end"),
-        showProgress = FALSE,
-        key = c("chr", "start")
     )
 
     gb <- GBins(
-        seqnames = x$chr,
-        ranges = IRanges::IRanges(x$start, x$end)
+        seqnames = x[[1]],
+        ranges = IRanges::IRanges(x[[2]], x[[3]])
     )
 
     gb

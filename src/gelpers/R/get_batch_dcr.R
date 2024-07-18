@@ -18,7 +18,7 @@
 #' @param bound_dcr If \code{TRUE}, all dCR values less than 0 will be set to
 #'   0 and all dCR values greater than 5 will be set to 5. Otherwise the dCR
 #'   matrix will be left as is.
-#' @returns A \code{data.table} with the portion of the dCR matrix overlapping
+#' @returns A \code{data.frame} with the portion of the dCR matrix overlapping
 #'   the query region. The first three columns will be \code{'chr'},
 #'   \code{'start'}, and \code{'end'} corresponding to the dCR regions. The
 #'   remaining columns will be the samples and their dCR values.
@@ -35,6 +35,15 @@ get_batch_dcr.gregion <- function(x, paths, bound_dcr = TRUE) {
     dcrs <- vector(mode = "list", length = length(paths))
     for (i in seq_along(paths)) {
         dcr <- .tabix(paths[[i]], x$chr, x$start, x$end)
+        if (ncol(dcr) == 0) {
+            stop("dCR is missing a header", call. = FALSE)
+        }
+
+        assert(df_has_columns(dcr, .cols = c("#chr", "start", "end")))
+        colnames(dcr)[colnames(dcr) == "#chr"] <- "chr"
+
+        dcr <- .fix_dcr_coltypes(dcr)
+
         if (bound_dcr) {
             dcr <- .bound_dcr(dcr)
         }
@@ -42,7 +51,7 @@ get_batch_dcr.gregion <- function(x, paths, bound_dcr = TRUE) {
         if (i == 1) {
             dcrs[[i]] <- dcr
         } else {
-            dcr[, `:=`(chr = NULL, start = NULL, end = NULL)]
+            dcr[c("chr", "start", "end")] <- list(NULL, NULL, NULL)
             dcrs[[i]] <- dcr
         }
     }
@@ -54,12 +63,10 @@ get_batch_dcr.gregion <- function(x, paths, bound_dcr = TRUE) {
         )
     }
 
-    dcr <- do.call(cbind, dcrs)
-    chr <- NULL
-    start <- NULL
-    data.table::setkey(dcr, chr, start)
+    out_dcr <- do.call(cbind, dcrs)
+    order_idx <- order(out_dcr$chr, out_dcr$start)
 
-    dcr
+    out_dcr[order_idx, ]
 }
 
 .tabix <- function(path, chr, start, end) {
@@ -68,31 +75,57 @@ get_batch_dcr.gregion <- function(x, paths, bound_dcr = TRUE) {
     on.exit(close(tabix_con), add = TRUE, after = FALSE)
 
     param <- GenomicRanges::GRanges(chr, IRanges::IRanges(start, end))
-    header <- Rsamtools::headerTabix(tabix_con)$header |>
-        strsplit(split = "\t", fixed = TRUE) |>
-        unlist()
-    records <- Rsamtools::scanTabix(tabix_con, param = param)[[1]]
+    header <- Rsamtools::headerTabix(tabix_con)$header
+    if (is.null(header) || length(header) == 0) {
+        header <- character()
+    } else {
+        header <- strsplit(header, split = "\t", fixed = TRUE) |>
+            unlist()
+    }
+    records <- Rsamtools::scanTabix(tabix_con, param = param)[[1]] |>
+        strsplit(split = "\t", fixed = TRUE)
 
-    out <- data.table::fread(
-        text = records,
-        header = FALSE,
-        sep = "\t"
-    )
-    colnames(out) <- header
-    data.table::setnames(out, "#chr", "chr")
+    if (length(records) == 0) {
+        if (length(header) == 0) {
+            return(data.frame())
+        }
+        out <- lapply(header, \(x) character())
+        names(out) <- header
+        out <- as.data.frame(out)
+        return(out)
+    }
+
+    out <- do.call("rbind", records) |>
+        as.data.frame()
+    if (length(header) == ncol(out)) {
+        colnames(out) <- header
+    }
 
     out
 }
 
 .bound_dcr <- function(x, lower = 0, upper = 5) {
-    fn <- function(column) {
-        column[column < lower] <- lower
-        column[column > upper] <- upper
-        column
+    cols <- which(!colnames(x) %in% c("chr", "start", "end"))
+    if (length(cols) == 0) {
+        return(x)
     }
+    x[cols] <- lapply(x[cols], .bound_dcr_col)
 
-    cols <- colnames(x)[!colnames(x) %in% c("chr", "start", "end")]
-    x[, (cols) := lapply(.SD, fn), .SDcols = cols]
+    x
+}
+
+.bound_dcr_col <- function(x, lower, upper) {
+    x[x < lower] <- lower
+    x[x > upper] <- upper
+    x
+}
+
+.fix_dcr_coltypes <- function(x) {
+    x$start <- as.integer(x$start)
+    x$end <- as.integer(x$end)
+
+    other_cols <- which(!colnames(x) %in% c("chr", "start", "end"))
+    x[other_cols] <- lapply(x[other_cols], as.double)
 
     x
 }

@@ -19,22 +19,21 @@
 #'
 #' @export
 #' @param path \code{character(1)}. Path to the callset.
-#' @returns \code{data.table} or signals an error if required columns are
+#' @returns \code{data.frame} or signals an error if required columns are
 #'   missing.
 read_callset <- function(path) {
     assert(is_string(path))
-    x <- data.table::fread(
+    x <- utils::read.table(
         file = path,
         sep = "\t",
-        header = TRUE,
-        showProgress = FALSE
+        header = TRUE
     )
 
     req_cols <- c(
         "chr", "start", "end", "sample", "batch", "svtype", "variant_name", "CN"
     )
     assert(df_has_columns(x, .cols = req_cols))
-    data.table::setkey(x, sample)
+    idx <- order(x$sample)
 
-    x
+    x[idx, ]
 }

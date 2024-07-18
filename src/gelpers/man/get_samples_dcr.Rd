@@ -23,7 +23,7 @@ Otherwise, only the requested samples are returned.}
 matrix will be left as is.}
 }
 \value{
-A \code{data.table} with the portion of the dCR matrix overlapping
+A \code{data.frame} with the portion of the dCR matrix overlapping
   the query region. The first three columns will be \code{'chr'},
   \code{'start'}, and \code{'end'}, corresponding to the dCR ranges. The
   next \var{N} columns (where \var{N} is the number samples requested) will

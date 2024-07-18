@@ -9,7 +9,6 @@ Depends:
     R (>= 4.0.0)
 Imports:
     assertify,
-    data.table (>= 1.15.4),
     GenomicRanges (>= 1.56.0),
     IRanges (>= 2.38.0),
     Rsamtools (>= 2.20.0),

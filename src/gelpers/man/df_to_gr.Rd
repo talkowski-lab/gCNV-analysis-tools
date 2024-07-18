@@ -2,18 +2,30 @@
 % Please edit documentation in R/df_to_gr.R
 \name{df_to_gr}
 \alias{df_to_gr}
-\title{Make a \code{GRanges} object from a \code{data.frame}}
+\alias{df_to_gr.data.frame}
+\title{Create a \code{GRanges} object from a \code{data.frame}}
 \usage{
-df_to_gr(x)
+df_to_gr(x, ...)
+
+\method{df_to_gr}{data.frame}(x, cnv = FALSE, ...)
 }
 \arguments{
-\item{x}{A \code{data.frame} with at least the columns "chr", "start", and
-"end". A "strand" column will be used for strand if available. All other
-columns will become the metadata columns.}
+\item{x}{A \code{data.frame} with at least the columns \code{chr},
+\code{start}, and \code{end}. A \code{strand} column will be used for
+strand if available and \code{cnv} is \code{FALSE}. All columns that are
+not \code{chr}, \code{start}, or \code{end} will become metadata columns.}
+
+\item{...}{Other arguments passed to methods.}
+
+\item{cnv}{If \code{TRUE}, the genomic ranges will be treated as CNVs. In
+this case, there should be an \code{svtype} column in \code{x} indicating
+the CNV type (either 'DUP' or 'DEL'). DUPs will be given a strand of '+'
+and DELs will given a strand of '-'.}
 }
 \value{
 A \code{GRanges} object.
 }
 \description{
-Make a \code{GRanges} object from a \code{data.frame}
+Create a \code{GRanges} object from a \code{data.frame} containing genomic
+ranges.
 }

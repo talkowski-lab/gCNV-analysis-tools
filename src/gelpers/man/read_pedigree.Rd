@@ -10,7 +10,7 @@ read_pedigree(path)
 \item{path}{Path to the pedigree file.}
 }
 \value{
-\code{data.table}.
+A \code{data.frame}.
 }
 \description{
 A read a pedigree file and peform minor cleaning.

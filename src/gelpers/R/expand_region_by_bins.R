@@ -22,7 +22,7 @@ expand_region_by_bins <- function(region, bins, pad = 0.2) {
     assert(inherits_from(region, "gregion"))
     assert(inherits_from(bins, "GBins"))
 
-    bin_chr <- methods::as(GenomicRanges::seqnames(bins), "character")
+    bin_chr <- as(GenomicRanges::seqnames(bins), "character")
     bin_start <- GenomicRanges::start(bins)
     bin_end <- GenomicRanges::end(bins)
 

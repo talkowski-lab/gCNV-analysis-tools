@@ -16,7 +16,7 @@ get_batch_dcr(x, paths, bound_dcr = TRUE)
 matrix will be left as is.}
 }
 \value{
-A \code{data.table} with the portion of the dCR matrix overlapping
+A \code{data.frame} with the portion of the dCR matrix overlapping
   the query region. The first three columns will be \code{'chr'},
   \code{'start'}, and \code{'end'} corresponding to the dCR regions. The
   remaining columns will be the samples and their dCR values.
