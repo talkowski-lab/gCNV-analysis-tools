@@ -327,7 +327,6 @@ if (!is.null(argv$denovo)) {
         distinct()
     denovo <- read_callset(args$denovo) |>
         as_tibble() |>
-        filter(inheritance == "denovo") |>
         mutate(family_id = as.character(family_id)) |>
         rename(offspring = sample) |>
         left_join(pedigree, by = "family_id", relationship = "many-to-many") |>
