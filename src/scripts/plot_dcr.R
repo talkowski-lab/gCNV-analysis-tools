@@ -321,7 +321,7 @@ bins <- read_gcnv_bins(args$bins)
 setup_outdir(args$outdir)
 
 # Run de novo plotting workflow ----------------------------------------------
-if (!is.null(argv$denovo)) {
+if (!is.null(args$denovo)) {
     message("Running de novo plotting workflow")
     batches <- select(callset, sample, batch) |>
         distinct()
