@@ -306,9 +306,9 @@ if (length(argv) != 5 || length(argv) != 6) {
 }
 args <- parse_args(argv)
 
-library(gelpers)
-library(tibble)
-library(dplyr)
+suppressPackageStartupMessages(library(gelpers))
+suppressPackageStartupMessages(library(tibble))
+suppressPackageStartupMessages(library(dplyr))
 
 set.seed(42)
 

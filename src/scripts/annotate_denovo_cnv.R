@@ -136,11 +136,11 @@ dcrs_path <- argv[[4]]
 nproc <- as.integer(argv[[5]])
 output <- argv[[6]]
 
-library(gelpers)
-library(GenomicRanges)
-library(parallel)
-library(tibble)
-library(dplyr)
+suppressPackageStartupMessages(library(gelpers))
+suppressPackageStartupMessages(library(GenomicRanges))
+suppressPackageStartupMessages(library(parallel))
+suppressPackageStartupMessages(library(tibble))
+suppressPackageStartupMessages(library(dplyr))
 
 # Read inputs -----------------------------------------------------------------
 raw_calls <- read_callset(callset_path) |>
