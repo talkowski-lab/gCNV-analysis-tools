@@ -301,7 +301,7 @@ plot_variant_group <- function(x, dcrs, bins, outdir) {
 
 # Parse command-line arguments ------------------------------------------------
 argv <- commandArgs(trailingOnly = TRUE)
-if (length(argv) != 5 || length(argv) != 6) {
+if (length(argv) != 5 && length(argv) != 6) {
     stop("Incorrect number of arguments to script", call. = FALSE)
 }
 args <- parse_args(argv)
