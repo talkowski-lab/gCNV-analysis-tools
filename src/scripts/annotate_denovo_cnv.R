@@ -40,6 +40,7 @@ get_denovo_evidence <- function(call_info, dcr_map) {
     mbatch <- call_info$maternal_batch
     region <- gregion(call_info$chr, call_info$start, call_info$end)
 
+    coord_cols <- c("chr", "start", "end")
     trio_ids <- c(cid, pid, mid)
     batches <- c(cbatch, pbatch, mbatch)
     dcr_groups <- split(trio_ids, batches)
@@ -61,17 +62,26 @@ get_denovo_evidence <- function(call_info, dcr_map) {
             return(regenotype(NULL))
         }
 
-        cols <- setdiff(colnames(dcr), trio_ids[!trio_ids %in% samples_i])
-        dcrs[[i]] <- as_tibble(dcr[cols])
+        cols <- setdiff(colnames(dcr), c(trio_ids[!trio_ids %in% samples_i], coord_cols))
+        dcr_mat <- data.matrix(dcr[cols])
+        rownames(dcr_mat) <- paste0(dcr$chr, ":", dcr$start, "-", dcr$end)
+        dcrs[[i]] <- dcr_mat
     }
 
-    coord_cols <- c("chr", "start", "end")
-    trio_dcr <- Reduce(\(x, y) inner_join(x, y, by = coord_cols), dcrs)
-    if (nrow(trio_dcr) == 0) {
-        return(regenotype(NULL))
+    bins <- unique(unlist(lapply(dcrs, rownames)))
+    if (length(bins) == 0) {
+      return(regenotype(NULL))
     }
-    bg_samples <- colnames(trio_dcr)[!colnames(trio_dcr) %in% c(coord_cols, trio_ids)]
-    trio_dcr <- trio_dcr[c(coord_cols, trio_ids, bg_samples)]
+    sample_ids <- lapply(dcrs, colnames)
+    trio_dcr <- matrix(nrow = length(bins), ncol = sum(lengths(sample_ids)))
+    rownames(trio_dcr) <- bins
+    colnames(trio_dcr) <- unlist(sample_ids)
+    for (mat in dcrs) {
+      trio_dcr[rownames(mat), colnames(mat)] <- mat
+    }
+
+    bg_samples <- colnames(trio_dcr)[!colnames(trio_dcr) %in% trio_ids]
+    trio_dcr <- trio_dcr[, c(trio_ids, bg_samples), drop = FALSE]
 
     regenotype(trio_dcr)
 }
@@ -90,19 +100,16 @@ regenotype <- function(dcr) {
         return(default_rg)
     }
 
-    cutoff <- if (any(grepl("chr[XY]", dcr$chr))) 1 else 0.5
-    mat <- dcr |>
-        select(!c(chr, start, end)) |>
-        data.matrix()
-    mads <- apply(mat, 1, mad)
-    mads_fail <- sum(mads >= cutoff)
+    cutoff <- if (any(grepl("chr[XY]", rownames(dcr)))) 1 else 0.5
+    mads <- apply(dcr, 1, mad)
+    mads_fail <- sum(mads >= cutoff, na.rm = TRUE)
     if (mads_fail == length(mads)) {
-        default_rg$bins_fail = mads_fail
-        default_rg$bins = length(mads)
+        default_rg$bins_fail <- mads_fail
+        default_rg$bins <- length(mads)
         return(default_rg)
     }
 
-    means <- apply(mat[mads < cutoff, ,drop = FALSE], 2, mean)
+    means <- apply(dcr[mads < cutoff, , drop = FALSE], 2, mean, na.rm = TRUE)
     # Assume child in first column, father in second, and mother in third
     md <- min(c(abs(means[[1]] - means[[2]]), abs(means[[1]] - means[[3]])))
     rg <- tibble(
