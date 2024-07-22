@@ -13,17 +13,19 @@
 #'   \item sex
 #'   \item phenotype
 #' }
-#' Only the phenotypes -9, 0, 1, and 2 are accepted with -9 and 0 meaning
-#' unknown, 1 meaning unaffected and 2 meaning affected. All other phenotypes
-#' will be silently converted to 0 and then -9 and 0 will be converted to `NA`.
-#' Sex can be 1 for male and 2 for female. All other sex codes will be
-#' converted to `NA`.  Any empty or duplicate sample IDs will be silently
-#' removed. It is better for the user to properly sanitize the file than to
-#' rely on this function to perform the cleaning.
+#' The file must have a header, but it will be ignored and columns will be
+#' named according to the above. Only the phenotypes -9, 0, 1, and 2 are
+#' accepted with -9 and 0 meaning unknown, 1 meaning unaffected and 2 meaning
+#' affected. All other phenotypes will be silently converted to 0 and then -9
+#' and 0 will be converted to \code{NA}. Sex can be 1 for male and 2 for female.
+#' All other sex codes will be converted to \code{NA}. Any empty or duplicate
+#' sample IDs will be silently removed. Any empty family, paternal, or maternal
+#' IDs will be converted to \code{NA}. It is better for the user to properly
+#' sanitize the file than to rely on this function to perform the cleaning.
 #'
 #' @export
-#' @param path Path to the pedigree file.
-#' @returns A \code{data.frame}.
+#' @param path \code{character(1)} Path to the pedigree file.
+#' @returns \code{data.frame}.
 read_pedigree <- function(path) {
     assert(is_string(path))
     x <- utils::read.table(
