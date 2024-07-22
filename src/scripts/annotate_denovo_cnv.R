@@ -70,14 +70,14 @@ get_denovo_evidence <- function(call_info, dcr_map) {
 
     bins <- unique(unlist(lapply(dcrs, rownames)))
     if (length(bins) == 0) {
-      return(regenotype(NULL))
+        return(regenotype(NULL))
     }
     sample_ids <- lapply(dcrs, colnames)
     trio_dcr <- matrix(nrow = length(bins), ncol = sum(lengths(sample_ids)))
     rownames(trio_dcr) <- bins
     colnames(trio_dcr) <- unlist(sample_ids)
     for (mat in dcrs) {
-      trio_dcr[rownames(mat), colnames(mat)] <- mat
+        trio_dcr[rownames(mat), colnames(mat)] <- mat
     }
 
     bg_samples <- colnames(trio_dcr)[!colnames(trio_dcr) %in% trio_ids]
@@ -167,7 +167,10 @@ raw_calls <- select(raw_calls, !c(sc, sf)) |>
     arrange(sample, chr, start)
 
 # Filter calls and merge in pedigree ------------------------------------------
-child_calls <- filter(raw_calls, PASS_SAMPLE & PASS_QS & sf < 0.01) |>
+child_calls <- filter(
+    raw_calls,
+    PASS_SAMPLE & PASS_QS & sf < 0.01 & !grepl("X|Y", chr)
+) |>
     inner_join(
         ped,
         by = join_by(sample == sample_id),
