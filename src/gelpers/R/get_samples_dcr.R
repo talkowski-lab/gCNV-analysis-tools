@@ -25,7 +25,7 @@ get_samples_dcr <- function(x,
                             paths,
                             samples,
                             include_bg = FALSE,
-                            bound_dcr = TRUE) {
+                            squeeze = TRUE) {
     UseMethod("get_samples_dcr")
 }
 
@@ -34,14 +34,14 @@ get_samples_dcr.gregion <- function(x,
                                     paths,
                                     samples,
                                     include_bg = FALSE,
-                                    bound_dcr = TRUE) {
+                                    squeeze = TRUE) {
     assert(is.character(samples))
     assert(length(samples) > 0)
     assert(!any(is.na(samples)), msg = "`NA` samples are not allowed")
     assert(is_flag(include_bg))
     assert(!is.na(include_bg))
 
-    dcr <- get_batch_dcr(x, paths, bound_dcr)
+    dcr <- get_batch_dcr(x, paths, squeeze)
     if (nrow(dcr) == 0) {
         stop("no ranges in the dCR overlapped the requested region")
     }

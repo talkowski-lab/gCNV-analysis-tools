@@ -4,7 +4,7 @@
 \alias{get_samples_dcr}
 \title{Retrieve a dCR region for samples in a gCNV batch}
 \usage{
-get_samples_dcr(x, paths, samples, include_bg = FALSE, bound_dcr = TRUE)
+get_samples_dcr(x, paths, samples, include_bg = FALSE, squeeze = TRUE)
 }
 \arguments{
 \item{x}{A \code{gregion} object for the target region.}
@@ -18,7 +18,7 @@ ID and all samples must be from the same batch.}
 \code{samples} will be included in the returned \code{data.table}.
 Otherwise, only the requested samples are returned.}
 
-\item{bound_dcr}{If \code{TRUE}, all dCR values less than 0 will be set to
+\item{squeeze}{If \code{TRUE}, all dCR values less than 0 will be set to
 0 and all dCR values greater than 5 will be set to 5. Otherwise the dCR
 matrix will be left as is.}
 }
