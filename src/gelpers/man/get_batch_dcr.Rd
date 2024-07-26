@@ -4,14 +4,14 @@
 \alias{get_batch_dcr}
 \title{Retrieve a dCR region for a gCNV batch}
 \usage{
-get_batch_dcr(x, paths, bound_dcr = TRUE)
+get_batch_dcr(x, paths, squeeze = TRUE)
 }
 \arguments{
 \item{x}{A \code{gregion} object for the target region.}
 
 \item{paths}{A character vector of paths. The length must be at least 1.}
 
-\item{bound_dcr}{If \code{TRUE}, all dCR values less than 0 will be set to
+\item{squeeze}{If \code{TRUE}, all dCR values less than 0 will be set to
 0 and all dCR values greater than 5 will be set to 5. Otherwise the dCR
 matrix will be left as is.}
 }

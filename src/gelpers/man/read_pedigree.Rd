@@ -7,15 +7,16 @@
 read_pedigree(path)
 }
 \arguments{
-\item{path}{Path to the pedigree file.}
+\item{path}{\code{character(1)} Path to the pedigree file.}
 }
 \value{
-A \code{data.frame}.
+\code{data.frame}.
 }
 \description{
 A read a pedigree file and peform minor cleaning.
 }
-\details{
+\section{File format}{
+
 The file must be tab-delimited with six columns in the following order:
 \enumerate{
   \item family_id
@@ -25,11 +26,18 @@ The file must be tab-delimited with six columns in the following order:
   \item sex
   \item phenotype
 }
-Only the phenotypes -9, 0, 1, and 2 are accepted with -9 and 0 meaning
-unknown, 1 meaning unaffected and 2 meaning affected. All other phenotypes
-will be silently converted to 0 and then -9 and 0 will be converted to `NA`.
-Sex can be 1 for male and 2 for female. All other sex codes will be
-converted to `NA`.  Any empty or duplicate sample IDs will be silently
-removed. It is better for the user to properly sanitize the file than to
-rely on this function to perform the cleaning.
+The file must have a header, but it will be ignored and columns will be named
+according to the above. Only the phenotypes -9, 0, 1, and 2 are accepted with
+-9 and 0 meaning unknown, 1 meaning unaffected and 2 meaning affected. All
+other phenotypes will be silently converted to 0 and then -9 and 0 will be
+converted to \code{NA}. Sex can be 1 for male and 2 for female. All other sex
+codes will be converted to \code{NA}.
+}
+
+\section{Sample IDs}{
+
+Any empty or duplicate sample IDs will be removed with a warning. Any empty
+family, paternal, or maternal IDs will be converted to \code{NA}. It is
+better for the user to properly sanitize the file than to rely on this
+function to perform the cleaning.
 }
