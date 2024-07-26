@@ -15,54 +15,47 @@
 #' @export
 #' @param x A \code{gregion} object for the target region.
 #' @param paths A character vector of paths. The length must be at least 1.
-#' @param bound_dcr If \code{TRUE}, all dCR values less than 0 will be set to
+#' @param squeeze If \code{TRUE}, all dCR values less than 0 will be set to
 #'   0 and all dCR values greater than 5 will be set to 5. Otherwise the dCR
 #'   matrix will be left as is.
 #' @returns A \code{data.frame} with the portion of the dCR matrix overlapping
 #'   the query region. The first three columns will be \code{'chr'},
 #'   \code{'start'}, and \code{'end'} corresponding to the dCR regions. The
 #'   remaining columns will be the samples and their dCR values.
-get_batch_dcr <- function(x, paths, bound_dcr = TRUE) {
+get_batch_dcr <- function(x, paths, squeeze = TRUE) {
     UseMethod("get_batch_dcr")
 }
 
 #' @export
-get_batch_dcr.gregion <- function(x, paths, bound_dcr = TRUE) {
+get_batch_dcr.gregion <- function(x, paths, squeeze = TRUE) {
     assert(is.character(paths))
     assert(length(paths) > 0)
     assert(!any(is.na(paths)), msg = "`NA` paths are not allowed")
-    assert(is_flag(bound_dcr))
-    assert(!is.na(bound_dcr))
+    assert(is_flag(squeeze))
+    assert(!is.na(squeeze))
 
     dcrs <- vector(mode = "list", length = length(paths))
+    rows <- 0L
     for (i in seq_along(paths)) {
         dcr <- .tabix(paths[[i]], x$chr, x$start, x$end)
-        if (ncol(dcr) == 0) {
-            stop("dCR is missing a header", call. = FALSE)
-        }
 
-        assert(df_has_columns(dcr, .cols = c("#chr", "start", "end")))
-        colnames(dcr)[colnames(dcr) == "#chr"] <- "chr"
-
-        dcr <- .fix_dcr_coltypes(dcr)
-
-        if (bound_dcr) {
-            dcr <- .bound_dcr(dcr)
+        if (squeeze && nrow(dcr) > 0) {
+            dcr <- .squeeze_dcr(dcr)
         }
 
         if (i == 1) {
             dcrs[[i]] <- dcr
+            rows <- nrow(dcr)
         } else {
+            if (nrow(dcr) != rows) {
+                stop(
+                    "dCR matrices for a batch have different row counts",
+                    call.= FALSE
+                )
+            }
             dcr[c("chr", "start", "end")] <- list(NULL, NULL, NULL)
             dcrs[[i]] <- dcr
         }
-    }
-    row_counts <- vapply(dcrs, nrow, integer(1))
-    if (max(row_counts) != min(row_counts)) {
-        stop(
-            "dCR matrices from a batch have different numbers of rows",
-            call. = FALSE
-        )
     }
 
     out_dcr <- do.call(cbind, dcrs)
@@ -77,55 +70,72 @@ get_batch_dcr.gregion <- function(x, paths, bound_dcr = TRUE) {
     on.exit(close(tabix_con), add = TRUE, after = FALSE)
 
     param <- GenomicRanges::GRanges(chr, IRanges::IRanges(start, end))
-    header <- Rsamtools::headerTabix(tabix_con)$header
-    if (is.null(header) || length(header) == 0) {
-        header <- character()
+    meta <- Rsamtools::headerTabix(tabix_con)
+    if (length(meta[["header"]]) == 0) {
+        signalCondition(.dcr_parse_error(path, "missing header"))
     }
+
+    if (!chr %in% meta[["seqnames"]]) {
+        stop(.dcr_parse_error(path, sprintf("no sequence '%s'", chr)))
+    }
+
+    if (length(meta[["comment"]]) > 0 && startsWith(meta[["header"]], meta[["comment"]])) {
+        header <- substr(meta[["header"]], 1 + nchar(meta[["comment"]]), nchar(meta[["header"]]))
+    } else {
+        header <- meta[["header"]]
+    }
+
+    header <- strsplit(header, split = "\t", fixed = TRUE)[[1]]
+    # header must have columns for chr, start, and end
+    if (length(header) < 3 || header[[1]] != "chr" || header[[2]] != "start" || header[[3]] != "end") {
+        signalCondition(
+            .dcr_parse_error(
+                path,
+                "first three columns must be 'chr', 'start', and 'end'"
+            )
+        )
+    }
+
     records <- Rsamtools::scanTabix(tabix_con, param = param)[[1]]
-
+    coltypes <- c(
+        list(character(), integer(), integer()),
+        lapply(seq_len(length(header) - 3), \(x) double())
+    )
     if (length(records) == 0) {
-        if (length(header) == 0) {
-            return(data.frame())
-        }
-        out <- lapply(header, \(x) character())
-        names(out) <- header
-        out <- as.data.frame(out)
-        return(out)
+        names(coltypes) <- header
+        return(as.data.frame(coltypes))
     }
 
-    out <- read.table(
-        text = c(header, records),
-        header = TRUE,
+    out <- scan(
+        text = records,
+        what = coltypes,
+        nmax = length(records),
         sep = "\t",
-        check.names = FALSE,
-        comment.char = ""
+        quiet = TRUE
     )
+    names(out) <- header
 
-    out
+    as.data.frame(out)
 }
 
-.bound_dcr <- function(x, lower = 0, upper = 5) {
-    cols <- which(!colnames(x) %in% c("chr", "start", "end"))
-    if (length(cols) == 0) {
+.squeeze_dcr <- function(x, lower = 0, upper = 5) {
+    if (ncol(x) <= 3) {
         return(x)
     }
-    x[cols] <- lapply(x[cols], \(y) .bound_dcr_col(y, lower, upper))
+
+    for (i in seq.int(4, ncol(x), 1)) {
+        x[[i]][x[[i]] < lower] <- lower
+        x[[i]][x[[i]] > upper] <- upper
+    }
 
     x
 }
 
-.bound_dcr_col <- function(x, lower, upper) {
-    x[x < lower] <- lower
-    x[x > upper] <- upper
-    x
-}
-
-.fix_dcr_coltypes <- function(x) {
-    x$start <- as.integer(x$start)
-    x$end <- as.integer(x$end)
-
-    other_cols <- which(!colnames(x) %in% c("chr", "start", "end"))
-    x[other_cols] <- lapply(x[other_cols], as.double)
-
-    x
+.dcr_parse_error <- function(path, error, call = NULL) {
+    msg <- paste0(
+        sprintf("parsing dCR in '%s' failed", path),
+        "\n- ",
+        error
+    )
+    errorCondition(msg, class = "dcr_parse_error", call = call)
 }
