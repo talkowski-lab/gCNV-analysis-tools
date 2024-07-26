@@ -42,9 +42,6 @@ get_samples_dcr.gregion <- function(x,
     assert(!is.na(include_bg))
 
     dcr <- get_batch_dcr(x, paths, squeeze)
-    if (nrow(dcr) == 0) {
-        stop("no ranges in the dCR overlapped the requested region")
-    }
 
     samples <- unique(samples)
     has_all_samples <- df_has_columns(dcr, .cols = samples)
