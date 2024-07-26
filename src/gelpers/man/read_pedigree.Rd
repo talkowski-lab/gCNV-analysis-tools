@@ -41,3 +41,4 @@ family, paternal, or maternal IDs will be converted to \code{NA}. It is
 better for the user to properly sanitize the file than to rely on this
 function to perform the cleaning.
 }
+
