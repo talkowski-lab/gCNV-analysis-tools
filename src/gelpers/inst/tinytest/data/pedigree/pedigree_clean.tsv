@@ -1,0 +1,11 @@
+family_id	sample_id	paternal_id	maternal_id	sex	phenotype
+family00	sample00	sample01	sample02	1	2
+family00	sample01	NA	NA	1	1
+family00	sample02	NA	NA	2	2
+family01	sample03	sample04	sample05	2	1
+family01	sample04	NA	NA	1	1
+family01	sample05	NA	NA	2	NA
+family02	sample06	NA	sample07	NA	2
+family02	sample07	NA	NA	2	2
+NA	sample08	sample09	NA	1	2
+NA	sample09	NA	NA	1	1
