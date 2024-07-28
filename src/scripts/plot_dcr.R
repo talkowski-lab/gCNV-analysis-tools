@@ -235,13 +235,13 @@ get_group_dcr <- function(samples,
         bg_samples <- colnames(dcr)[!colnames(dcr) %in% c(coord_cols, samples)]
         if (length(bg_samples) > 0) {
             bg_samples <- sample(bg_samples, min(length(bg_samples), bg_per_batch))
-            bg_dcr <- dcr[c(coords_cols, bg_samples)]
+            bg_dcr <- dcr[c(coord_cols, bg_samples)]
             # It is possible that a single sample is in different batches which
             # creates the problem of duplicate column names when the background
             # dCR data.frames are joined so we change the column names to be
             # unique as we don't need the sample IDs anyways.
             colnames(bg_dcr) <- c(
-                coords_cols, paste0(bg_samples, "_", i, random_str(length(bg_samples)))
+                coord_cols, paste0(bg_samples, "_", i, random_str(length(bg_samples)))
             )
             bg_dcr_list[[i]] <- bg_dcr
         }
