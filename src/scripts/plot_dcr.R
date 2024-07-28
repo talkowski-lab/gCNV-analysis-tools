@@ -220,7 +220,7 @@ get_group_dcr <- function(samples,
             get_samples_dcr(
                 expanded_region,
                 gethash(dcrs, batch),
-                batch_gorups[[i]]
+                batch_gorups[[i]],
                 include_bg = TRUE
             ),
             error = function(cnd) NULL
