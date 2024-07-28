@@ -1,0 +1,19 @@
+version: 1.2
+workflows:
+  - name: AnnotateDeNovo
+    subclass: WDL
+    primaryDescriptorPath: /wdl/AnnotateDeNovo.wdl
+    filters:
+      branches:
+        - main
+      tags:
+        - /.*/
+
+  - name: PlotRD
+    subclass: WDL
+    primaryDescriptorPath: /wdl/PlotRD.wdl
+    filters:
+      branches:
+        - main
+      tags:
+        - /.*/
