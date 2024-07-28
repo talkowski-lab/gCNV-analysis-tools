@@ -226,7 +226,7 @@ get_group_dcr <- function(samples,
             error = function(cnd) NULL
         )
 
-        if (is.null(dcr)) {
+        if (is.null(dcr) || nrow(dcr) == 0) {
             next
         }
 

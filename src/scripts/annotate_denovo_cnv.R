@@ -58,7 +58,7 @@ get_denovo_evidence <- function(call_info, dcr_map) {
             ),
             error = function(cnd) NULL
         )
-        if (is.null(dcr)) {
+        if (is.null(dcr) || nrow(dcr) == 0) {
             return(regenotype(NULL))
         }
 
