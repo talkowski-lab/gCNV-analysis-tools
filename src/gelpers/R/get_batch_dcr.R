@@ -72,7 +72,7 @@ get_batch_dcr.gregion <- function(x, paths, squeeze = TRUE) {
     param <- GenomicRanges::GRanges(chr, IRanges::IRanges(start, end))
     meta <- Rsamtools::headerTabix(tabix_con)
     if (length(meta[["header"]]) == 0) {
-        signalCondition(.dcr_parse_error(path, "missing header"))
+        stop(.dcr_parse_error(path, "missing header"))
     }
 
     if (!chr %in% meta[["seqnames"]]) {
@@ -88,12 +88,16 @@ get_batch_dcr.gregion <- function(x, paths, squeeze = TRUE) {
     header <- strsplit(header, split = "\t", fixed = TRUE)[[1]]
     # header must have columns for chr, start, and end
     if (length(header) < 3 || header[[1]] != "chr" || header[[2]] != "start" || header[[3]] != "end") {
-        signalCondition(
+        stop(
             .dcr_parse_error(
                 path,
                 "first three columns must be 'chr', 'start', and 'end'"
             )
         )
+    }
+
+    if (anyDuplicated(header)) {
+        stop(.dcr_parse_error(path, "duplicate samples"))
     }
 
     records <- Rsamtools::scanTabix(tabix_con, param = param)[[1]]
@@ -103,7 +107,7 @@ get_batch_dcr.gregion <- function(x, paths, squeeze = TRUE) {
     )
     if (length(records) == 0) {
         names(coltypes) <- header
-        return(as.data.frame(coltypes))
+        return(as.data.frame(coltypes, check.names = FALSE))
     }
 
     out <- scan(
@@ -115,7 +119,7 @@ get_batch_dcr.gregion <- function(x, paths, squeeze = TRUE) {
     )
     names(out) <- header
 
-    as.data.frame(out)
+    as.data.frame(out, check.names = FALSE)
 }
 
 .squeeze_dcr <- function(x, lower = 0, upper = 5) {

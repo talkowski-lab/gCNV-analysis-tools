@@ -71,3 +71,10 @@ expect_error(
         c("data/dCR/mismatched_rows_part0_dcr.bed.gz", "data/dCR/mismatched_rows_part1_dcr.bed.gz"),
     )
 )
+
+# test reading a dCR with non-syntatic names
+region <- gregion("chr1", 20713356, 111389364)
+dcr <- get_batch_dcr(region, "data/dCR/non_syntatic_samples_dcr.bed.gz")
+expect_true(all(c("123sample", "+sample", "sample1777") %in% colnames(dcr)))
+expect_equal(ncol(dcr), 6)
+expect_equal(nrow(dcr), 4)
