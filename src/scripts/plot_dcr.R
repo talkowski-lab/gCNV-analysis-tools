@@ -12,7 +12,7 @@
 # * OUTDIR  - Output directory. Must not exist
 
 # Functions -------------------------------------------------------------------
-ALPHANUM <- c(LETTERS, tolower(LETTERS), as.character(0:9))
+ALPHANUM <- c(LETTERS, letters, as.character(0:9))
 
 # Parse the command line arguments.
 parse_args <- function(argv) {
