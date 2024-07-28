@@ -22,7 +22,6 @@ RUN R CMD build gelpers \
   && R CMD INSTALL gelpers*.tar.gz \
   && rm -rf gelpers*
 
-RUN cd opt \
-  && mkdir -p gcnv/scripts
+RUN mkdir -p /opt/gcnv/scripts
 
-COPY src/scripts/*.R gcnv/scripts/
+COPY src/scripts/*.R /opt/gcnv/scripts/
