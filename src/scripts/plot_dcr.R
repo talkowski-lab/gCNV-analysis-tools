@@ -12,6 +12,8 @@
 # * OUTDIR  - Output directory. Must not exist
 
 # Functions -------------------------------------------------------------------
+ALPHANUM <- c(LETTERS, tolower(LETTERS), as.character(0:9))
+
 # Parse the command line arguments.
 parse_args <- function(argv) {
     argc <- length(argv)
@@ -27,6 +29,14 @@ parse_args <- function(argv) {
     )
 
     args
+}
+
+random_str <- function(n, k = 7) {
+    replicate(
+        n,
+        paste0(sample(ALPHANUM, k, replace = TRUE), collapse = ""),
+        simplify = TRUE
+    )
 }
 
 # Create the output directory for the plots. Signal error if it already exists.
@@ -188,8 +198,8 @@ plot_dcr <- function(x, dcr, outfile, main = "") {
     dev.off()
 }
 
-# Get the dCR matrix for a group of samples. If this function fails to get the
-# dCR matrix, it will either signal an error or return NULL.
+# Get the dCR matrix for a group of samples. Samples that are missing are
+# ignored.
 get_group_dcr <- function(samples,
                           batches,
                           dcrs,
@@ -206,29 +216,50 @@ get_group_dcr <- function(samples,
     bg_dcr_list <- vector(mode = "list", length = length(batch_groups))
     for (i in seq_along(batch_groups)) {
         batch <- names(batch_groups)[[i]]
-        dcr <- get_samples_dcr(
-            expanded_region,
-            gethash(dcrs, batch, character()),
-            batch_groups[[i]],
-            include_bg = TRUE
-        ) |>
-            as_tibble()
-        cols <- c(coord_cols, batch_groups[[i]])
-        dcr_list[[i]] <- dcr[cols]
+        dcr <- tryCatch(
+            get_samples_dcr(
+                expanded_region,
+                gethash(dcrs, batch),
+                batch_gorups[[i]]
+                include_bg = TRUE
+            ),
+            error = function(cnd) NULL
+        )
+
+        if (is.null(dcr)) {
+            next
+        }
+
+        dcr_list[[i]] <- dcr[c(coord_cols, batch_groups[[i]])]
 
         bg_samples <- colnames(dcr)[!colnames(dcr) %in% c(coord_cols, samples)]
         if (length(bg_samples) > 0) {
             bg_samples <- sample(bg_samples, min(length(bg_samples), bg_per_batch))
-            bg_cols <- c(coord_cols, bg_samples)
-            bg_dcr_list[[i]] <- dcr[bg_cols]
+            bg_dcr <- dcr[c(coords_cols, bg_samples)]
+            # It is possible that a single sample is in different batches which
+            # creates the problem of duplicate column names when the background
+            # dCR data.frames are joined so we change the column names to be
+            # unique as we don't need the sample IDs anyways.
+            colnames(bg_dcr) <- c(
+                coords_cols, paste0(bg_samples, "_", i, random_str(length(bg_samples)))
+            )
+            bg_dcr_list[[i]] <- bg_dcr
         }
     }
 
+    dcr_list <- Filter(Negate(is.null), dcr_list)
+    bg_dcr_list <- Filter(Negate(is.null), bg_dcr_list)
+
+    if (length(dcr_list) == 0) {
+        return(NULL)
+    }
+
     merged_dcr <- Reduce(
-        \(x, y) suppressMessages(inner_join(x, y, by = NULL)),
+        \(x, y) suppressMessages(inner_join(x, y, by = coord_cols)),
         c(dcr_list, bg_dcr_list)
     ) |>
-      arrange(chr, start)
+        arrange(chr, start)
+
     if (nrow(merged_dcr) == 0) {
         return(NULL)
     }
@@ -240,9 +271,10 @@ get_group_dcr <- function(samples,
     )
 
     bg_samples <- colnames(merged_dcr)[!colnames(merged_dcr) %in% c(coord_cols, samples, "in_flank")]
+    fg_samples <- samples[samples %in% colnames(merged_dcr)]
     list(
         coords = merged_dcr[c(coord_cols, "in_flank")],
-        sample_dcr = merged_dcr[samples],
+        sample_dcr = merged_dcr[fg_samples],
         bg_dcr = merged_dcr[bg_samples]
     )
 }
@@ -250,10 +282,7 @@ get_group_dcr <- function(samples,
 plot_denovo_group <- function(x, dcrs, bins, outdir) {
     calls <- distinct(x, sample, .keep_all = TRUE)
     region <- get_largest_variant(calls)
-    dcr <- tryCatch(
-        get_group_dcr(calls$sample, calls$batch, dcrs, region, bins),
-        error = function(cnd) NULL
-    )
+    dcr <- get_group_dcr(calls$sample, calls$batch, dcrs, region, bins)
     if (is.null(dcr)) {
         warning(
             paste0("could not plot de novo '", x[1, ]$variant_name, "' from family '", x[1, ]$family_id, "'"),
@@ -277,10 +306,7 @@ plot_denovo_group <- function(x, dcrs, bins, outdir) {
 
 plot_variant_group <- function(x, dcrs, bins, outdir) {
   region <- get_largest_variant(x)
-  dcr <- tryCatch(
-      get_group_dcr(x$sample, x$batch, dcrs, region, bins),
-      error = function(cnd) NULL
-  )
+  dcr <- get_group_dcr(x$sample, x$batch, dcrs, region, bins)
   if (is.null(dcr)) {
       warning(
           paste0("Could not plot variant ", x[1, ]$variant_name),
@@ -368,15 +394,19 @@ if (!is.null(args$denovo)) {
 
 # Run variant group plotting workflow ----------------------------------------
 message("Running variant plotting workflow")
-callset <- pedigree[, list(sample_id, phenotype, family_id)][
-  callset, on = c(sample_id = "sample"), mult = "first"]
-setnames(callset, "sample_id", "sample")
+pedigree <- select(pedigree, sample_id, phenotype, family_id)
+callset <- left_join(
+    callset, pedigree,
+    by = join_by(sample == sample_id),
+    multiple = "any"
+) |>
+    distinct(sample, variant_name, .keep_all = TRUE)
 
 # Split callset by variant ID
 variant_groups <- split(callset, callset$variant_name)
 for (vg in variant_groups) {
   message(
-    paste0("Plotting variant ", dg[1, variant_name])
+    paste0("Plotting variant ", vg[1, ]$variant_name)
   )
-  plot_variant_group(vg, dcr_file_paths, intervals, args$outdir)
+  plot_variant_group(vg, dcrs, bins, args$outdir)
 }
