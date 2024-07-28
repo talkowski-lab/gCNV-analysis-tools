@@ -71,7 +71,7 @@ task DeNovo {
       '~{write_lines(dcr_files)}' \
       ~{cpus}
       'denovo_annotated_calls.bed'
-     gzip 'denovo_annotated_calls.bed'
+    gzip 'denovo_annotated_calls.bed'
   >>>
 
   output {
