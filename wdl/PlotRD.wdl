@@ -20,7 +20,20 @@ workflow PlotCNVEvidence {
   Array[File] dcr_files = flatten(dcr_file_sets)
   Array[File] dcr_indicies = flatten(dcr_index_sets)
 
-  call PlotRD
+  call PlotRD {
+    input:
+      callset = callset,
+      denovo = denovo,
+      pedigree = pedigree,
+      intervals = intervals,
+
+      runtime_docker = runtime_docker,
+
+      dcr_files = dcr_files,
+      dcr_indicies = dcr_indicies,
+
+      runtime_attr_override = runtime_attr_override
+  }
 
   output {
     File plots = PlotRD.plots

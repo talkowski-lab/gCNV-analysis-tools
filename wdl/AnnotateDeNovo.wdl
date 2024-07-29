@@ -19,7 +19,19 @@ workflow AnnotateDeNovo {
   Array[File] dcr_files = flatten(dcr_file_sets)
   Array[File] dcr_indicies = flatten(dcr_index_sets)
 
-  call DeNovo
+  call DeNovo {
+    input:
+      callset = callset,
+      pedigree = pedigree,
+      intervals = intervals,
+
+      runtime_docker = runtime_docker,
+
+      dcr_files = dcr_files,
+      dcr_indicies = dcr_indicies,
+
+      runtime_attr_override = runtime_attr_override
+  }
 
   output {
     File denovo_annotated = DeNovo.denovo_annotated
