@@ -11,8 +11,8 @@ workflow PlotCNVEvidence {
 
     String runtime_docker
 
-    Array[File] dcr_file_sets  # denoised coverage ratio files
-    Array[File] dcr_index_sets # index files
+    Array[File] dcr_files    # denoised coverage ratio files
+    Array[File] dcr_indicies # index files
 
     RuntimeAttr? runtime_attr_override
   }
