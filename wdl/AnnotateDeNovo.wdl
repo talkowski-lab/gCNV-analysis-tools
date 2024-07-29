@@ -10,14 +10,11 @@ workflow AnnotateDeNovo {
 
     String runtime_docker 
 
-    Array[Array[File]] dcr_file_sets  # denoised coverage ratio files
-    Array[Array[File]] dcr_index_sets # index files
+    Array[File] dcr_file_sets  # denoised coverage ratio files
+    Array[File] dcr_index_sets # index files
 
     RuntimeAttr? runtime_attr_override
   }
-
-  Array[File] dcr_files = flatten(dcr_file_sets)
-  Array[File] dcr_indicies = flatten(dcr_index_sets)
 
   call DeNovo {
     input:
