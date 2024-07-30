@@ -1,14 +1,27 @@
+.GRANGES_MCOLS_BL <- c(
+    "seqnames", "ranges", "strand", "seqlevels", "seqlengths", "isCircular",
+    "start", "end", "width", "element"
+)
+
 #' Create a \code{GRanges} object from a \code{data.frame}
 #'
 #' Create a \code{GRanges} object from a \code{data.frame} containing genomic
 #' ranges.
+#'
+#' @details
+#' The columns 'seqnames', 'ranges', 'strand', 'seqlevels', 'seqlengths',
+#' 'isCircular', 'start', 'end', 'width', and 'element' are not allowed names
+#' for a \code{GRanges} metadata column so columns with these names will be
+#' removed from \code{x} with a warning before assigning them to metadata
+#' columns.
 #'
 #' @name df_to_gr
 #' @export
 #' @param x A \code{data.frame} with at least the columns \code{chr},
 #'   \code{start}, and \code{end}. A \code{strand} column will be used for
 #'   strand if available and \code{cnv} is \code{FALSE}. All columns that are
-#'   not \code{chr}, \code{start}, or \code{end} will become metadata columns.
+#'   not \code{chr}, \code{start}, \code{end}, or otherwise prohibited will
+#'   become metadata columns.
 #' @param cnv If \code{TRUE}, the genomic ranges will be treated as CNVs. In
 #'   this case, there should be an \code{svtype} column in \code{x} indicating
 #'   the CNV type (either 'DUP' or 'DEL'). DUPs will be given a strand of '+'
@@ -41,10 +54,20 @@ df_to_gr.data.frame <- function(x, cnv = FALSE, ...) {
         ranges = IRanges::IRanges(x$start, x$end),
         strand = s
     )
-
     
     other_cols <- colnames(x)[!colnames(x) %in% req_cols]
     if (length(other_cols) > 0) {
+        bad_cols <- other_cols[other_cols %in% .GRANGES_MCOLS_BL]
+        if (length(bad_cols) > 0) {
+            warning(
+                paste0(
+                    "removing prohibited GRanges metadata columns: ",
+                    paste0("'", bad_cols, "'", collapse = ", "),
+                )
+                call. = FALSE
+            )
+            other_cols <- other_cols[!other_cols %in% .GRANGES_MCOLS_BL]
+        }
         GenomicRanges::mcols(gr) <- x[, other_cols]
     }
 
