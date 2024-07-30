@@ -78,7 +78,7 @@ task DeNovo {
       '~{intervals}' \
       '~{pedigree}' \
       '~{write_lines(dcr_files)}' \
-      ~{cpus}
+      ~{cpus} \
       'denovo_annotated_calls.bed'
     gzip 'denovo_annotated_calls.bed'
   >>>
