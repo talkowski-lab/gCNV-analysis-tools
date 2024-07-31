@@ -11,7 +11,7 @@ expect_identical(ped, ped_clean)
 # test reading pedigree with missing samples
 expect_warning(
     read_pedigree("data/pedigree/pedigree_missing_samples.tsv"),
-    pattern = "removing 1 missing sample(s) from pedigree",
+    pattern = r"{removing 1 missing sample\(s\) from pedigree}",
     strict = TRUE
 )
 ped <- suppressWarnings(read_pedigree("data/pedigree/pedigree_missing_samples.tsv"))
@@ -32,7 +32,7 @@ expect_identical(ped, ped_clean)
 # test that duplicate sample IDs are removed
 expect_warning(
     read_pedigree("data/pedigree/pedigree_duplicate_samples.tsv"),
-    pattern = "removing 2 duplicate sample(s) from pedigree",
+    pattern = r"{removing 2 duplicate sample\(s\) from pedigree}",
     strict = TRUE
 )
 ped <- suppressWarnings(read_pedigree("data/pedigree/pedigree_duplicate_samples.tsv"))
