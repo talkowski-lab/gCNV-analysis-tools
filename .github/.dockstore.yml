@@ -9,9 +9,9 @@ workflows:
       tags:
         - /.*/
 
-  - name: PlotRD
+  - name: PlotCNVEvidence
     subclass: WDL
-    primaryDescriptorPath: /wdl/PlotRD.wdl
+    primaryDescriptorPath: /wdl/PlotCNVEvidence.wdl
     filters:
       branches:
         - main
