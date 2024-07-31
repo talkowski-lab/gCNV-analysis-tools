@@ -73,6 +73,7 @@ task DeNovo {
   }
 
   command <<<
+    cat '~{write_lines(dcr_indicies)}' | xargs -- touch -c -m
     Rscript /opt/gcnv/scripts/annotate_denovo_cnv.R \
       '~{callset}' \
       '~{intervals}' \

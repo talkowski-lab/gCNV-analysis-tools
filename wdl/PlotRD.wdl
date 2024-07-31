@@ -76,6 +76,7 @@ task PlotRD {
   }
 
   command <<<
+    cat '~{write_lines(dcr_indicies)}' | xargs -- touch -c -m
     Rscript /opt/gcnv/scripts/plot_cnv_evidence.R \
       '~{callset}' \
       '~{denovo}' \
