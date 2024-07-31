@@ -79,9 +79,9 @@ task PlotRD {
     Rscript /opt/gcnv/scripts/plot_cnv_evidence.R \
       '~{callset}' \
       '~{denovo}' \
-      '~{write_lines(dcr_files)}' \
-      '~{pedigree}' \
       '~{intervals}' \
+      '~{pedigree}' \
+      '~{write_lines(dcr_files)}' \
       'rd_plots'
     tar --create --gzip --file='rd_plots.tar.gz' 'rd_plots'
   >>>
