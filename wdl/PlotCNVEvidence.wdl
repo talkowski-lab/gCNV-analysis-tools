@@ -58,7 +58,7 @@ task PlotRD {
     disk_gb: ceil(8.0 + input_size),
     cpu_cores: 1,
     preemptible_tries: 3,
-    max_retries: 1,
+    max_retries: 0,
     boot_disk_gb: 16
   }
   RuntimeAttr runtime_attr = select_first([runtime_attr_override, runtime_default])

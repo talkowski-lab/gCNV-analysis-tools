@@ -56,7 +56,7 @@ task DeNovo {
     disk_gb: ceil(8.0 + input_size),
     boot_disk_gb: 16,
     preemptible_tries: 3,
-    max_retries: 1,
+    max_retries: 0,
   }
   RuntimeAttr runtime_attr = select_first([runtime_attr_override, runtime_default])
 
