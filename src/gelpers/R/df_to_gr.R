@@ -63,7 +63,7 @@ df_to_gr.data.frame <- function(x, cnv = FALSE, ...) {
                 paste0(
                     "removing prohibited GRanges metadata columns: ",
                     paste0("'", bad_cols, "'", collapse = ", "),
-                )
+                ),
                 call. = FALSE
             )
             other_cols <- other_cols[!other_cols %in% .GRANGES_MCOLS_BL]
