@@ -7,21 +7,28 @@
 read_dcr_list(path)
 }
 \arguments{
-\item{path}{Path to the file of dCR matrix paths. There should be one dCR
-matrix path per line.}
+\item{path}{Path to the file of dCR matrix paths.}
 }
 \value{
 \code{hashtab} in which the keys are batch IDs and the values are
-  paths to the dCR matrices for the batch.
+  character vectors of paths to the dCR matrices for the batch.
 }
 \description{
 Read a list of dCR matrix paths and create a hash table from gCNV batch to
 dCR matrix path.
 }
 \details{
-The paths must be of the form
-"path/to/\{BATCH\}_((CASE)|(COHORT)).dcr.bed.gz" which is the default for
-gCNV. The CASE and COHORT files will be combined for a batch such that
-querying the hash table for a batch will return a character vector with the
-paths to both the CASE and COHORT matrices, if they are available.
+There are two options for the input file. If the file is a one-column table
+(when a tab is used as the separator), then it will be treated as a list of
+file paths, one per line. The paths must be of the form
+"path/to/\{BATCH\}_((CASE)|(COHORT)).dcr.bed.gz" where "\{BATCH\}" is the batch
+ID. If a path is not of this form, this function will signal an error.
+
+If the file is a two-column table, then the first column must be the batch
+ID and the second columm must be the path to a dCR matrix for that batch.
+It is assumed that all rows with the same batch ID are actually from the
+same batch. If there are any empty strings in either column, this function
+will signal an error.
+
+Any other file format is an error.
 }
