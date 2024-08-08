@@ -65,9 +65,9 @@ GBins <- function(seqnames = NULL,
 #' bins.
 #'
 #' @details
-#' `toBinSpace` converts each genomic bin to its relative position (first bin
-#' is 1, second bin is 2, and so on) and then maps each genomic range to its
-#' span of bins. Thus, if a genomic range overlapped bins 7 through 13, its
+#' \code{toBinSpace} converts each genomic bin to its relative position (first
+#' bin is 1, second bin is 2, and so on) and then maps each genomic range to
+#' its span of bins. Thus, if a genomic range overlapped bins 7 through 13, its
 #' coordinates would become 7 to 13. Strand is ignored when determining
 #' overlap, but sequence name is respected.
 #'
