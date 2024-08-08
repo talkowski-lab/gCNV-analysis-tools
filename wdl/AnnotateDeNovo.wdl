@@ -13,6 +13,7 @@ workflow AnnotateDeNovo {
     Array[File] dcr_files    # denoised coverage ratio files
     Array[File] dcr_indicies # index files
 
+    File? dcr_table # tab-delimited table mapping batch ID to dCR path
     RuntimeAttr? runtime_attr_override
   }
 
@@ -27,6 +28,7 @@ workflow AnnotateDeNovo {
       dcr_files = dcr_files,
       dcr_indicies = dcr_indicies,
 
+      dcr_table = dcr_table,
       runtime_attr_override = runtime_attr_override
   }
 
@@ -46,6 +48,7 @@ task DeNovo {
     Array[File] dcr_files
     Array[File] dcr_indicies
   
+    File? dcr_table
     RuntimeAttr? runtime_attr_override
   }
 
@@ -59,6 +62,8 @@ task DeNovo {
     max_retries: 0,
   }
   RuntimeAttr runtime_attr = select_first([runtime_attr_override, runtime_default])
+
+  File dcr_paths = if defined(dcr_table) then dcr_table else write_lines(dcr_files)
 
   Int cpus = select_first([runtime_attr.cpu_cores, runtime_default.cpu_cores])
 
@@ -78,7 +83,7 @@ task DeNovo {
       '~{callset}' \
       '~{intervals}' \
       '~{pedigree}' \
-      '~{write_lines(dcr_files)}' \
+      '~{dcr_paths}' \
       ~{cpus} \
       'denovo_annotated_calls.bed'
     gzip 'denovo_annotated_calls.bed'
