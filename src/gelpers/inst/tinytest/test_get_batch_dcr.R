@@ -78,3 +78,17 @@ dcr <- get_batch_dcr(region, "data/dCR/non_syntatic_samples_dcr.bed.gz")
 expect_true(all(c("123sample", "+sample", "sample1777") %in% colnames(dcr)))
 expect_equal(ncol(dcr), 6)
 expect_equal(nrow(dcr), 4)
+
+# test reading a dCR with overlapping ranges
+region <- gregion("1", 1, 8888)
+dcr <- get_batch_dcr(region, "data/dCR/overlapping_ranges_dcr.bed.gz")
+expect_equal(
+    dcr,
+    data.frame(
+        chr = "1",
+        start = c(777L, 4000L),
+        end = c(1100L, 6000L),
+        sample00 = c(2, 2.2),
+        sample01 = c(2.5, 2)
+    )
+)
