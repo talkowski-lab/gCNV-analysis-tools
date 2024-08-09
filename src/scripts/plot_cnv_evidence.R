@@ -343,7 +343,8 @@ callset <- read_callset(args$callset) |>
 pedigree <- read_pedigree(args$pedigree) |>
     as_tibble()
 dcrs <- read_dcr_list(args$dcrs)
-bins <- read_gcnv_bins(args$bins)
+is_hg19 <- any(c(as.character(1:22), "X", "Y") %in% callset$chr)
+bins <- read_gcnv_bins(args$bins, reduce = is_hg19)
 setup_outdir(args$outdir)
 
 # Run de novo plotting workflow ----------------------------------------------

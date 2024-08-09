@@ -145,7 +145,8 @@ suppressPackageStartupMessages(library(dplyr))
 # Read inputs -----------------------------------------------------------------
 raw_calls <- read_callset(callset_path) |>
     as_tibble()
-bins <- read_gcnv_bins(bins_path)
+is_hg19 <- any(c(as.character(1:22), "X", "Y") %in% raw_calls$chr)
+bins <- read_gcnv_bins(bins_path, reduce = is_hg19)
 ped <- read_pedigree(ped_path) |>
     as_tibble() |>
     filter(sample_id %in% raw_calls$sample) |>
@@ -282,7 +283,7 @@ rg_info <- mutate(
     rg_info,
     inheritance = replace(
         inheritance,
-        grepl("X", "chr") & ((MF > 1.3 & svtype == "DUP") | (MF < 0.7 & svtype == "DEL") | (MM > 2.3 & svtype == "DUP") | (MM > 1.7 & svtype == "DEL")),
+        grepl("X", chr) & ((MF > 1.3 & svtype == "DUP") | (MF < 0.7 & svtype == "DEL") | (MM > 2.3 & svtype == "DUP") | (MM > 1.7 & svtype == "DEL")),
         "fail_chrX"
   )
 )
