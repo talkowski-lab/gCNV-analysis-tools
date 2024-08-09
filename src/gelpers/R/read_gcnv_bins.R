@@ -11,9 +11,13 @@
 #'
 #' @export
 #' @param path Path to the file.
+#' @param reduce Should overlapping ranges be merged?
 #' @returns A \code{GBins} object.
-read_gcnv_bins <- function(path) {
+read_gcnv_bins <- function(path, reduce = FALSE) {
     assert(is_string(path))
+    assert(is_flag(reduce))
+    assert(!is.na(reduce))
+
     x <- utils::read.table(
         path,
         header = FALSE,
@@ -23,6 +27,7 @@ read_gcnv_bins <- function(path) {
     gb <- GBins(
         seqnames = x[[1]],
         ranges = IRanges::IRanges(x[[2]], x[[3]])
+        reduce = reduce
     )
 
     gb
