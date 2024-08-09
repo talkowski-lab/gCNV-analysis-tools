@@ -13,7 +13,7 @@ workflow AnnotateDeNovo {
     Array[File] dcr_files    # denoised coverage ratio files
     Array[File] dcr_indicies # index files
 
-    File? dcr_table # tab-delimited table mapping batch ID to dCR path
+    Array[String]? batch_ids
     RuntimeAttr? runtime_attr_override
   }
 
@@ -28,7 +28,7 @@ workflow AnnotateDeNovo {
       dcr_files = dcr_files,
       dcr_indicies = dcr_indicies,
 
-      dcr_table = dcr_table,
+      batch_ids = batch_ids,
       runtime_attr_override = runtime_attr_override
   }
 
@@ -48,7 +48,7 @@ task DeNovo {
     Array[File] dcr_files
     Array[File] dcr_indicies
   
-    File? dcr_table
+    Array[String]? batch_ids
     RuntimeAttr? runtime_attr_override
   }
 
@@ -59,13 +59,15 @@ task DeNovo {
     disk_gb: ceil(8.0 + input_size),
     boot_disk_gb: 16,
     preemptible_tries: 3,
-    max_retries: 0,
+    max_retries: 0
   }
   RuntimeAttr runtime_attr = select_first([runtime_attr_override, runtime_default])
 
-  File dcr_paths = if defined(dcr_table) then dcr_table else write_lines(dcr_files)
-
   Int cpus = select_first([runtime_attr.cpu_cores, runtime_default.cpu_cores])
+
+  Array[String] batches = select_first([batch_ids, []])
+  File dcr_paths_file = write_lines(dcr_files)
+  File batch_ids_file = if length(batches) > 0 then write_lines(batches) else '/dev/null'
 
   runtime {
     memory: "${select_first([runtime_attr.mem_gb, runtime_default.mem_gb])} GB"
@@ -79,11 +81,17 @@ task DeNovo {
 
   command <<<
     cat '~{write_lines(dcr_indicies)}' | xargs -- touch -c -m
+    if [[ '~{batch_ids_file}' != '/dev/null' ]]; then
+      paste -d '\t' '~{batch_ids_file}' '~{dcr_paths_file}' > dcrs.tsv
+      dcrs=dcrs.tsv
+    else
+      dcrs='~{dcr_paths_file}'
+    fi
     Rscript /opt/gcnv/scripts/annotate_denovo_cnv.R \
       '~{callset}' \
       '~{intervals}' \
       '~{pedigree}' \
-      '~{dcr_paths}' \
+      "${dcrs}" \
       ~{cpus} \
       'denovo_annotated_calls.bed'
     gzip 'denovo_annotated_calls.bed'
