@@ -4,10 +4,12 @@
 \alias{read_gcnv_bins}
 \title{Read gCNV bins file}
 \usage{
-read_gcnv_bins(path)
+read_gcnv_bins(path, reduce = FALSE)
 }
 \arguments{
 \item{path}{Path to the file.}
+
+\item{reduce}{Should overlapping ranges be merged?}
 }
 \value{
 A \code{GBins} object.

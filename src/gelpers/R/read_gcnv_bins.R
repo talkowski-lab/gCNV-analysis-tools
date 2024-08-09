@@ -26,7 +26,7 @@ read_gcnv_bins <- function(path, reduce = FALSE) {
 
     gb <- GBins(
         seqnames = x[[1]],
-        ranges = IRanges::IRanges(x[[2]], x[[3]])
+        ranges = IRanges::IRanges(x[[2]], x[[3]]),
         reduce = reduce
     )
 
