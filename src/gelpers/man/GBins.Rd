@@ -12,7 +12,8 @@ GBins(
   strand = NULL,
   ...,
   seqinfo = NULL,
-  seqlengths = NULL
+  seqlengths = NULL,
+  reduce = FALSE
 )
 }
 \arguments{
@@ -29,7 +30,8 @@ allowed as the strand.}
 \item{...}{Metatdata columns to set on the GBins object. All the metadata
 columns must be vector-like object of the same length as the object to
 construct. They cannot be named \code{start}, \code{end}, \code{width}, or
-\code{element}.}
+\code{element}. If \code{reduce} is \code{TRUE}, then all metadata columns
+will ignored.}
 
 \item{seqinfo}{\code{NULL}, or a \code{\link[GenomeInfoDb]{Seqinfo}} object,
 character vector of unique sequence names, or a named numeric vector of
@@ -40,6 +42,9 @@ have additional entries not in \code{seqnames}.}
 
 \item{seqlengths}{\code{NULL}, or a named integer vector containing the
 length or NA of each sequence in \code{levels(seqnames)}.}
+
+\item{reduce}{Should any overlapping ranges be reduced? If \code{FALSE},
+passing overlapping ranges is an error.}
 }
 \description{
 A \code{GBins} class is an extension of the \code{GRanges} class that

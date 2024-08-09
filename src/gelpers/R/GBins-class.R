@@ -35,13 +35,16 @@ setValidity("GBins", function(object) {
 #' @param ... Metatdata columns to set on the GBins object. All the metadata
 #'   columns must be vector-like object of the same length as the object to
 #'   construct. They cannot be named \code{start}, \code{end}, \code{width}, or
-#'   \code{element}.
+#'   \code{element}. If \code{reduce} is \code{TRUE}, then all metadata columns
+#'   will ignored.
 #' @param seqinfo \code{NULL}, or a \code{\link[GenomeInfoDb]{Seqinfo}} object,
 #'   character vector of unique sequence names, or a named numeric vector of
 #'   sequence lengths. When not \code{NULL}, \code{seqinfo} must be compatible
 #'   with the sequence names in \code{seqnames}, that is, it must have one
 #'   entry for each unique sequence name in \code{seqnames}. Note that it can
 #'   have additional entries not in \code{seqnames}.
+#' @param reduce Should any overlapping ranges be reduced? If \code{FALSE},
+#'   passing overlapping ranges is an error.
 #' @param seqlengths \code{NULL}, or a named integer vector containing the
 #'   length or NA of each sequence in \code{levels(seqnames)}.
 #' @export
@@ -50,10 +53,20 @@ GBins <- function(seqnames = NULL,
                   strand = NULL,
                   ...,
                   seqinfo = NULL,
-                  seqlengths = NULL) {
+                  seqlengths = NULL,
+                  reduce = FALSE) {
+    assert(is_flag(reduce))
+    assert(!is.na(reduce))
+
     gr <- GenomicRanges::GRanges(
         seqnames, ranges, strand, ..., seqinfo, seqlengths
-    ) |> sort()
+    )
+
+    if (reduce) {
+        gr <- GenomicRanges::reduce(gr, ignore.strand = TRUE)
+    }
+
+    gr <- GenomicRanges::sort(gr)
 
     .GBins(gr)
 }
