@@ -11,6 +11,7 @@
 #' @param include_bg If \code{TRUE}, all of the other samples not among
 #'   \code{samples} will be included in the returned \code{data.table}.
 #'   Otherwise, only the requested samples are returned.
+#' @param ... Any additional arguments to pass to \code{\link{get_batch_dcr}}.
 #' @returns A \code{data.frame} with the portion of the dCR matrix overlapping
 #'   the query region. The first three columns will be \code{'chr'},
 #'   \code{'start'}, and \code{'end'}, corresponding to the dCR ranges. The
@@ -25,7 +26,7 @@ get_samples_dcr <- function(x,
                             paths,
                             samples,
                             include_bg = FALSE,
-                            squeeze = TRUE) {
+                            ...) {
     UseMethod("get_samples_dcr")
 }
 
@@ -34,14 +35,14 @@ get_samples_dcr.gregion <- function(x,
                                     paths,
                                     samples,
                                     include_bg = FALSE,
-                                    squeeze = TRUE) {
+                                    ...) {
     assert(is.character(samples))
     assert(length(samples) > 0)
     assert(!any(is.na(samples)), msg = "`NA` samples are not allowed")
     assert(is_flag(include_bg))
     assert(!is.na(include_bg))
 
-    dcr <- get_batch_dcr(x, paths, squeeze)
+    dcr <- get_batch_dcr(x, paths, ...)
 
     samples <- unique(samples)
     has_all_samples <- df_has_columns(dcr, .cols = samples)
