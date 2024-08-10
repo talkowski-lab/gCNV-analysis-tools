@@ -65,9 +65,9 @@ task DeNovo {
 
   Int cpus = select_first([runtime_attr.cpu_cores, runtime_default.cpu_cores])
 
-  Array[String] batches = select_first([batch_ids, []])
+  Array[String] batch_ids_arr = select_first([batch_ids, []])
   File dcr_paths_file = write_lines(dcr_files)
-  File batch_ids_file = if length(batches) > 0 then write_lines(batches) else '/dev/null'
+  Boolean make_dcr_map = length(batch_ids_arr) > 0
 
   runtime {
     memory: "${select_first([runtime_attr.mem_gb, runtime_default.mem_gb])} GB"
@@ -81,8 +81,8 @@ task DeNovo {
 
   command <<<
     cat '~{write_lines(dcr_indicies)}' | xargs -- touch -c -m
-    if [[ '~{batch_ids_file}' != '/dev/null' ]]; then
-      paste -d '\t' '~{batch_ids_file}' '~{dcr_paths_file}' > dcrs.tsv
+    if [[ '~{make_dcr_map}' = 'true' ]]; then
+      paste -d '\t' '~{write_lines(batch_ids_arr)}' '~{dcr_paths_file}' > dcrs.tsv
       dcrs=dcrs.tsv
     else
       dcrs='~{dcr_paths_file}'
