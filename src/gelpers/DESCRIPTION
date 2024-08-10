@@ -18,3 +18,4 @@ License: GPL (>= 3)
 Encoding: UTF-8
 RoxygenNote: 7.3.2
 Suggests: tinytest
+Remotes: assertify=gitlab::jdotlim/assertify@main
