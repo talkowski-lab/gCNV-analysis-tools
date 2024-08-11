@@ -109,7 +109,10 @@ setMethod("toBinSpace", c("GRanges", "GBins"), function(x, y) {
         S4Vectors::zipdown()
     idx <- as.integer(names(hits))
     if (length(idx) < length(x)) {
-        warning("some ranges in `x` don't have any overlaps in `y`")
+        warning(
+            "some ranges in `x` don't have any overlaps in `y`",
+            call. = FALSE
+        )
     }
     out <- GenomicRanges::GRanges(
         seqnames = GenomicRanges::seqnames(x[idx]),
