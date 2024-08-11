@@ -136,6 +136,7 @@ dcrs_path <- argv[[4]]
 nproc <- as.integer(argv[[5]])
 output <- argv[[6]]
 
+log_info("loading libraries")
 suppressPackageStartupMessages(library(gelpers))
 suppressPackageStartupMessages(library(GenomicRanges))
 suppressPackageStartupMessages(library(parallel))
@@ -143,18 +144,23 @@ suppressPackageStartupMessages(library(tibble))
 suppressPackageStartupMessages(library(dplyr))
 
 # Read inputs -----------------------------------------------------------------
+log_info("reading callset")
 raw_calls <- read_callset(callset_path) |>
     as_tibble()
 is_hg19 <- any(c(as.character(1:22), "X", "Y") %in% raw_calls$chr)
+log_info("reading bins")
 bins <- read_gcnv_bins(bins_path, reduce = is_hg19)
+log_info("reading pedigree")
 ped <- read_pedigree(ped_path) |>
     as_tibble() |>
     filter(sample_id %in% raw_calls$sample) |>
     filter(paternal_id %in% raw_calls$sample) |>
     filter(maternal_id %in% raw_calls$sample)
+log_info("reading dCR paths")
 dcrs <- read_dcr_list(dcrs_path)
 
 # Recalibrate offspring CNV frequency to parents' -----------------------------
+log_info("making initial de novo predictions baseds on CNV overlap")
 parent_ids <- unique(c(ped$paternal_id, ped$maternal_id))
 parent_cnvs <- raw_calls |>
     filter(sample %in% parent_ids) |>
@@ -214,6 +220,7 @@ child_calls <- child_calls |>
       )
   )
 dn <- filter(child_calls, inheritance == "denovo")
+log_info(sprintf("found %d de novo events based on overlap", nrow(dn)))
 
 # Gather dCR evidence ---------------------------------------------------------
 batch_tbl <- select(raw_calls, sample, batch) |>
@@ -229,6 +236,7 @@ dn <- select(batch_tbl, paternal_id, paternal_batch) |>
 dn <- select(batch_tbl, maternal_id, maternal_batch) |>
     inner_join(dn, by = "maternal_id", relationship = "one-to-many")
 
+log_info("gathering dCR evidence")
 rg_info <- mclapply(
     seq_len(nrow(dn)),
     \(i) get_denovo_evidence(as.list(dn[i, ]), dcrs),
@@ -236,6 +244,7 @@ rg_info <- mclapply(
 ) |>
     bind_rows()
 
+log_info("regenotyping")
 rg_info <- rg_info |>
     mutate(
         CN = dn$CN,
@@ -338,6 +347,8 @@ out <- inner_join(
     multiple = "first"
 )
 
+log_info("writing output")
 write.table(
   out, file = output, sep = "\t", col.names = TRUE, row.names = FALSE, quote = FALSE
 )
+log_info("done")
