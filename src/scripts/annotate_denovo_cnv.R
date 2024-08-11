@@ -100,7 +100,7 @@ regenotype <- function(dcr) {
         return(default_rg)
     }
 
-    cutoff <- if (any(grepl("chr[XY]", rownames(dcr)))) 1 else 0.5
+    cutoff <- 0.5
     mads <- apply(dcr, 1, mad)
     mads_fail <- sum(mads >= cutoff, na.rm = TRUE)
     if (mads_fail == length(mads)) {
@@ -188,8 +188,8 @@ child_calls <- filter(
 # Get preliminary de novo calls based on overlap ------------------------------
 gr_c <- df_to_gr(child_calls, cnv = TRUE)
 
-paternal_calls <- filter(raw_calls, sample %in% ped$paternal_id)
-maternal_calls <- filter(raw_calls, sample %in% ped$maternal_id)
+paternal_calls <- filter(raw_calls, sample %in% ped$paternal_id, !grepl("X|Y", chr))
+maternal_calls <- filter(raw_calls, sample %in% ped$maternal_id, !grepl("X|Y", chr))
 gr_p <- df_to_gr(paternal_calls, cnv = TRUE)
 gr_m <- df_to_gr(maternal_calls, cnv = TRUE)
 
@@ -259,7 +259,7 @@ rg_info <- mutate(
     rg_info,
     inheritance = replace(
         inheritance,
-        abs(M - CN) > 0.175 & !grepl("X|Y", chr) & CN <= 3,
+        abs(M - CN) > 0.175 & CN <= 3,
         "fail_M"
     )
 )
@@ -267,7 +267,7 @@ rg_info <- mutate(
     rg_info,
     inheritance = replace(
         inheritance,
-        MD < 0.7 & !grepl("X|Y", chr),
+        MD < 0.7,
         "fail_MD"
     )
 )
@@ -275,7 +275,7 @@ rg_info <- mutate(
     rg_info,
     inheritance = replace(
         inheritance,
-        (abs(M - CN) > 0.175 & !grepl("X|Y", chr) & CN <= 3) & (MD < 0.7 & !grepl("X|Y", chr)),
+        abs(M - CN) > 0.175 & CN <= 3 & MD < 0.7,
         "fail_M_MD"
     )
 )
@@ -292,24 +292,7 @@ rg_info <- mutate(
     rg_info,
     inheritance = replace(
         inheritance,
-        grepl("X", chr) & ((MF > 1.3 & svtype == "DUP") | (MF < 0.7 & svtype == "DEL") | (MM > 2.3 & svtype == "DUP") | (MM > 1.7 & svtype == "DEL")),
-        "fail_chrX"
-  )
-)
-rg_info <- mutate(
-    rg_info,
-    inheritance = replace(
-        inheritance,
-        grepl("Y", chr) & ((MF > 1.3 & svtype == "DUP") | (MF < 0.7 & svtype == "DEL") | (MM > 0.3 & svtype == "DUP")),
-        "fail_chrY"
-    )
-)
-
-rg_info <- mutate(
-    rg_info,
-    inheritance = replace(
-        inheritance,
-        CN > 2 & !grepl("X|Y", chr) & inheritance == "denovo" & (MF > 2.5 | MM > 2.5),
+        CN > 2 & inheritance == "denovo" & (MF > 2.5 | MM > 2.5),
         "inherited"
     )
 )
@@ -317,18 +300,18 @@ rg_info <- mutate(
     rg_info,
     inheritance = replace(
         inheritance,
-        CN < 2 & !grepl("X|Y", chr) & inheritance == "denovo" & (MF < 1.5 | MM < 1.5),
+        CN < 2 & inheritance == "denovo" & (MF < 1.5 | MM < 1.5),
         "inherited"
     )
 )
 
 rg_info$mos_dup_thresh <- NA_real_
-mos_dup_idx <- with(rg_info, inheritance == "denovo" & !grepl("X|Y", chr) & svtype == "DUP")
+mos_dup_idx <- with(rg_info, inheritance == "denovo" & svtype == "DUP")
 mos_dup_thresh <- sapply(qnorm(0.98, 0, 0.5 / sqrt(rg_info[mos_dup_idx, ]$bins)) + 2, max, 2.1)
 rg_info[mos_dup_idx, "mos_dup_thresh"] <- mos_dup_thresh
 
 rg_info$mos_del_thresh <- NA_real_
-mos_del_idx <- with(rg_info, inheritance == "denovo" & !grepl("X|Y", chr) & svtype == "DEL")
+mos_del_idx <- with(rg_info, inheritance == "denovo" & svtype == "DEL")
 mos_del_thresh <- sapply(qnorm(0.98, 0, 0.5 / sqrt(rg_info[mos_del_idx, ]$bins)) * -1 + 2, min, 1.9)
 rg_info[mos_del_idx, "mos_del_thresh"] <- mos_del_thresh
 
