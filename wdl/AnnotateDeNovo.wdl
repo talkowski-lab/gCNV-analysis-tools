@@ -66,7 +66,6 @@ task DeNovo {
   Int cpus = select_first([runtime_attr.cpu_cores, runtime_default.cpu_cores])
 
   Array[String] batch_ids_arr = select_first([batch_ids, []])
-  File dcr_paths_file = write_lines(dcr_files)
   Boolean make_dcr_map = length(batch_ids_arr) > 0
 
   runtime {
@@ -80,12 +79,13 @@ task DeNovo {
   }
 
   command <<<
+    dcr_paths='~{write_lines(dcr_files)}'
     cat '~{write_lines(dcr_indicies)}' | xargs -- touch -c -m
     if [[ '~{make_dcr_map}' = 'true' ]]; then
-      paste -d '\t' '~{write_lines(batch_ids_arr)}' '~{dcr_paths_file}' > dcrs.tsv
+      paste -d '\t' '~{write_lines(batch_ids_arr)}' "${dcr_paths}" > dcrs.tsv
       dcrs=dcrs.tsv
     else
-      dcrs='~{dcr_paths_file}'
+      dcrs="${dcr_paths}"
     fi
     Rscript /opt/gcnv/scripts/annotate_denovo_cnv.R \
       '~{callset}' \
