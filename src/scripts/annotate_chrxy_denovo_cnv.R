@@ -233,7 +233,7 @@ if (nrow(mismatch_sex) > 0) {
 }
 
 pass_sex <- filter(pass_sex, predicted_sex == sex)
-log_info(sprintf("continuing analysis with %d samples passing sex check", nrow(pass_sex))
+log_info(sprintf("continuing analysis with %d samples passing sex check", nrow(pass_sex)))
 
 # Filter the callset and pedigree ---------------------------------------------
 raw_calls <- filter(raw_calls, sample %in% pass_sex$sample)
