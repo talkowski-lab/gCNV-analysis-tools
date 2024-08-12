@@ -14,7 +14,7 @@ workflow PlotCNVEvidence {
     Array[File] dcr_files    # denoised coverage ratio files
     Array[File] dcr_indicies # index files
 
-    File? dcr_table
+    Array[String]? batch_ids
     RuntimeAttr? runtime_attr_override
   }
 
@@ -30,7 +30,7 @@ workflow PlotCNVEvidence {
       dcr_files = dcr_files,
       dcr_indicies = dcr_indicies,
 
-      dcr_table = dcr_table,
+      batch_ids = batch_ids,
       runtime_attr_override = runtime_attr_override
   }
 
@@ -51,24 +51,25 @@ task PlotRD {
     Array[File] dcr_files
     Array[File] dcr_indicies
 
-    File? dcr_table
+    Array[String]? batch_ids
     RuntimeAttr? runtime_attr_override
   }
 
   Float input_size = 1.5 * size(dcr_files, "GB")
   RuntimeAttr runtime_default = object {
     mem_gb: 4,
-    disk_gb: ceil(8.0 + input_size),
     cpu_cores: 1,
+    disk_gb: ceil(8.0 + input_size),
+    boot_disk_gb: 16,
     preemptible_tries: 3,
-    max_retries: 0,
-    boot_disk_gb: 16
+    max_retries: 0
   }
   RuntimeAttr runtime_attr = select_first([runtime_attr_override, runtime_default])
 
-  File dcr_paths = if defined(dcr_table) then dcr_table else write_lines(dcr_files)
-
   Int cpus = select_first([runtime_attr.cpu_cores, runtime_default.cpu_cores])
+
+  Array[String] batch_ids_arr = select_first([batch_ids, []])
+  Boolean make_dcr_map = length(batch_ids_arr) > 0
 
   runtime {
     memory: "${select_first([runtime_attr.mem_gb, runtime_default.mem_gb])} GB"
@@ -82,12 +83,18 @@ task PlotRD {
 
   command <<<
     cat '~{write_lines(dcr_indicies)}' | xargs -- touch -c -m
+    if [[ '~{make_dcr_map}' = 'true' ]]; then
+      paste -d '\t' '~{write_lines(batch_ids_arr)}' "${dcr_paths}" > dcrs.tsv
+      dcrs=dcrs.tsv
+    else
+      dcrs="${dcr_paths}"
+    fi
     Rscript /opt/gcnv/scripts/plot_cnv_evidence.R \
       '~{callset}' \
       '~{denovo}' \
       '~{intervals}' \
       '~{pedigree}' \
-      '~{dcr_paths}' \
+      "${dcrs}" \
       'rd_plots'
     tar --create --gzip --file='rd_plots.tar.gz' 'rd_plots'
   >>>
