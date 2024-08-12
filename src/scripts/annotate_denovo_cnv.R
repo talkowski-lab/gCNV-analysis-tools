@@ -160,7 +160,7 @@ log_info("reading dCR paths")
 dcrs <- read_dcr_list(dcrs_path)
 
 # Recalibrate offspring CNV frequency to parents' -----------------------------
-log_info("making initial de novo predictions baseds on CNV overlap")
+log_info("making initial de novo predictions based on CNV overlap")
 parent_ids <- unique(c(ped$paternal_id, ped$maternal_id))
 parent_cnvs <- raw_calls |>
     filter(sample %in% parent_ids) |>
