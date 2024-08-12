@@ -79,6 +79,10 @@ task DeNovo {
   }
 
   command <<<
+    set -o errexit
+    set -o pipefail
+    set -o nounset
+
     dcr_paths='~{write_lines(dcr_files)}'
     cat '~{write_lines(dcr_indicies)}' | xargs -- touch -c -m
     if [[ '~{make_dcr_map}' = 'true' ]]; then
