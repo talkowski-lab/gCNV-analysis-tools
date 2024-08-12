@@ -47,7 +47,7 @@ task DeNovo {
 
     Array[File] dcr_files
     Array[File] dcr_indicies
-  
+
     Array[String]? batch_ids
     RuntimeAttr? runtime_attr_override
   }
