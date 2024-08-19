@@ -30,60 +30,26 @@ get_coverage <- function(x, y, relation = c("paternal", "maternal")) {
     out
 }
 
-# Get the M, MF, MM, etc. data.frame for a suspected de novo call.
-get_denovo_evidence <- function(call_info, dcr_map) {
-    cid <- call_info$sample
-    pid <- call_info$paternal_id
-    mid <- call_info$maternal_id
-    cbatch <- call_info$batch
-    pbatch <- call_info$paternal_batch
-    mbatch <- call_info$maternal_batch
-    region <- gregion(call_info$chr, call_info$start, call_info$end)
+get_denovo_evidence <- function(x, dcr_map) {
+    region <- gregion(x$chr, x$start, x$end)
+    trio_dcr <- tryCatch({
+        get_trio_dcr(region,
+                     c(x$sample, x$paternal_id, x$maternal_id),
+                     c(x$batch, x$paternal_batch, x$maternal_batch),
+                     dcr_map,
+                     include_bg = TRUE,
+                     keep_all_ranges = TRUE,
+                     squeeze = TRUE,
+                     reduce = TRUE)
 
-    coord_cols <- c("chr", "start", "end")
-    trio_ids <- c(cid, pid, mid)
-    batches <- c(cbatch, pbatch, mbatch)
-    dcr_groups <- split(trio_ids, batches)
-    dcrs <- vector(mode = "list", length = length(dcr_groups))
-    for (i in seq_along(dcr_groups)) {
-        batch_i <- names(dcr_groups)[[i]]
-        samples_i <- dcr_groups[[i]]
-        dcr_paths <- gethash(dcr_map, batch_i)
-        if (is.null(dcr_paths)) {
-            return(regenotype(NULL))
-        }
-        dcr <- tryCatch(
-            get_samples_dcr(
-                region, dcr_paths, samples_i, include_bg = cid %in% samples_i
-            ),
-            error = function(cnd) NULL
-        )
-        if (is.null(dcr) || nrow(dcr) == 0) {
-            return(regenotype(NULL))
-        }
+    },
+    error = function(cnd) NULL)
 
-        cols <- setdiff(colnames(dcr), c(trio_ids[!trio_ids %in% samples_i], coord_cols))
-        dcr_mat <- data.matrix(dcr[cols])
-        rownames(dcr_mat) <- paste0(dcr$chr, ":", dcr$start, "-", dcr$end)
-        dcrs[[i]] <- dcr_mat
-    }
-
-    bins <- unique(unlist(lapply(dcrs, rownames)))
-    if (length(bins) == 0) {
+    if (is.null(trio_dcr) || nrow(trio_dcr) == 0) {
         return(regenotype(NULL))
     }
-    sample_ids <- lapply(dcrs, colnames)
-    trio_dcr <- matrix(nrow = length(bins), ncol = sum(lengths(sample_ids)))
-    rownames(trio_dcr) <- bins
-    colnames(trio_dcr) <- unlist(sample_ids)
-    for (mat in dcrs) {
-        trio_dcr[rownames(mat), colnames(mat)] <- mat
-    }
 
-    bg_samples <- colnames(trio_dcr)[!colnames(trio_dcr) %in% trio_ids]
-    trio_dcr <- trio_dcr[, c(trio_ids, bg_samples), drop = FALSE]
-
-    regenotype(trio_dcr)
+    regenotype(trio_dcr[!colnames(trio_dcr) %in% c("chr", "start", "end")])
 }
 
 # Compute the M, MF, MM, etc. table from the trio dCR of a de novo call.
