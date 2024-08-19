@@ -59,3 +59,14 @@ dcr <- get_trio_dcr(region,
                     keep_all_ranges = FALSE)
 expect_equal(8, ncol(dcr))
 expect_equal(0, nrow(dcr))
+
+# Test getting trio where a sample is in multiple batches
+utils::sethash(dcr_path_map, "batch01", "data/trio_dcr/trio_dcr_00.dcr.bed.gz")
+region <- gregion("chr19", 2e6, 39e6)
+dcr <- get_trio_dcr(region,
+                       sprintf("sample%02d", 0:2),
+                       paste0("batch", c("00", "01", "01")),
+                       dcr_path_map,
+                       include_bg = TRUE)
+expect_equal(c("chr", "start", "end", "sample00", "sample01", "sample02"), colnames(dcr))
+expect_equal(5, nrow(dcr))
