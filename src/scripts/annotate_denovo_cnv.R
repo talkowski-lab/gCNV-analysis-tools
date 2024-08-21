@@ -102,7 +102,6 @@ dcrs_path <- argv[[4]]
 nproc <- as.integer(argv[[5]])
 output <- argv[[6]]
 
-log_info("loading libraries")
 suppressPackageStartupMessages(library(gelpers))
 suppressPackageStartupMessages(library(GenomicRanges))
 suppressPackageStartupMessages(library(parallel))
