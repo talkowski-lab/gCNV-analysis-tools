@@ -20,25 +20,15 @@ XY_MAX <- 1.1
 TABIX_MAX_SEQLEN <- 536870912L
 
 # Functions -------------------------------------------------------------------
-get_coverage <- function(x, y, relation = c("paternal", "maternal")) {
-    relation <- match.arg(relation)
-    ol <- findOverlaps(x, y)
-    x_mcols <- mcols(x[queryHits(ol)])
-    y_mcols <- mcols(y[subjectHits(ol)])
-    if (relation == "paternal") {
-        ol <- ol[x_mcols[["paternal_id"]] == y_mcols[["sample"]]]
-    } else {
-        ol <- ol[x_mcols[["maternal_id"]] == y_mcols[["sample"]]]
-    }
-    int <- pintersect(x[queryHits(ol)], y[subjectHits(ol)])
-    cov_hit <- by(width(int) / width(x[queryHits(ol)]), queryHits(ol), sum)
-    out <- double(length = length(x))
-    out[as.integer(names(cov_hit))] <- cov_hit
+regenotype <- function(x, dcr_map) {
+    default_rg_info <- tibble(
+        M = NA_real_,
+        MF = NA_real_,
+        MM = NA_real_,
+        bins_fail = NA_integer_,
+        bins = NA_integer_
+    )
 
-    out
-}
-
-get_denovo_evidence <- function(x, dcr_map) {
     region <- gregion(x$chr, x$start, x$end)
     trio_dcr <- tryCatch({
         get_trio_dcr(region,
@@ -54,42 +44,25 @@ get_denovo_evidence <- function(x, dcr_map) {
     error = function(cnd) NULL)
 
     if (is.null(trio_dcr) || nrow(trio_dcr) == 0) {
-        return(regenotype(NULL))
+        return(default_rg_info)
     }
 
-    regenotype(trio_dcr[!colnames(trio_dcr) %in% c("chr", "start", "end")])
-}
-
-regenotype <- function(dcr) {
-    default_rg <- tibble(
-        M = NA_real_,
-        MF = NA_real_,
-        MM = NA_real_,
-        MD = NA_real_,
-        bins_fail = NA_integer_,
-        bins = NA_integer_
-    )
-    if (is.null(dcr)) {
-        return(default_rg)
-    }
+    dcr <- trio_dcr[setdiff(colnames(trio_dcr), c("chr", "start", "end"))]
 
     cutoff <- 1
     mads <- apply(dcr, 1, mad)
     mads_fail <- sum(mads >= cutoff, na.rm = TRUE)
     if (mads_fail == length(mads)) {
-        default_rg$bins_fail <- mads_fail
-        default_rg$bins <- length(mads)
-        return(default_rg)
+        default_rg_info$bins_fail <- mads_fail
+        default_rg_info$bins <- length(mads)
+        return(default_rg_info)
     }
 
-    means <- apply(dcr[mads < cutoff, , drop = FALSE], 2, mean, na.rm = TRUE)
-    # Assume child in first column, father in second, and mother in third
-    md <- min(c(abs(means[[1]] - means[[2]]), abs(means[[1]] - means[[3]])))
+    means <- apply(dcr[mads < cutoff, 1:3, drop = FALSE], 2, mean, na.rm = TRUE)
     rg <- tibble(
         M = means[[1]],
         MF = means[[2]],
         MM = means[[3]],
-        MD = md,
         bins_fail = mads_fail,
         bins = length(mads)
     )
@@ -290,8 +263,10 @@ gr_m <- df_to_gr(maternal_calls, cnv = TRUE)
 
 child_calls <- mutate(
     child_calls,
-    cov_p = get_coverage(gr_c, gr_p, "paternal"),
-    cov_m = get_coverage(gr_c, gr_m, "maternal")
+    cov_p = cnvCoverage(addPrefix(gr_c, mcols(gr_c)$paternal_id),
+                        addPrefix(gr_p, mcols(gr_p)$sample)),
+    cov_m = cnvCoverage(addPrefix(gr_c, mcols(gr_c)$maternal_id),
+                        addPrefix(gr_m, mcols(gr_m)$sample))
 )
 
 gr_c_bs <- toBinSpace(gr_c, bins)
@@ -300,8 +275,10 @@ gr_m_bs <- toBinSpace(gr_m, bins)
 
 child_calls <- mutate(
     child_calls,
-    cov_p_bs = get_coverage(gr_c_bs, gr_p_bs, "paternal"),
-    cov_m_bs = get_coverage(gr_c_bs, gr_m_bs, "maternal")
+    cov_p_bs = cnvCoverage(addPrefix(gr_c_bs, mcols(gr_c_bs)$paternal_id),
+                           addPrefix(gr_p_bs, mcols(gr_p_bs)$sample)),
+    cov_m_bs = cnvCoverage(addPrefix(gr_c_bs, mcols(gr_c_bs)$maternal_id),
+                           addPrefix(gr_m_bs, mcols(gr_m_bs)$sample))
 )
 
 child_calls <- child_calls |>
@@ -334,7 +311,7 @@ dn <- select(batch_tbl, maternal_id, maternal_batch) |>
 log_info("gathering dCR evidence")
 rg_info <- mclapply(
     seq_len(nrow(dn)),
-    \(i) get_denovo_evidence(as.list(dn[i, ]), dcrs),
+    \(i) regenotype(as.list(dn[i, ]), dcrs),
     mc.cores = nproc
 ) |>
     bind_rows()
