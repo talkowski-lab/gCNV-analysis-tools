@@ -1,6 +1,6 @@
 # chrX de novo CNV annotation pipeline
 #
-# Annotate de novo CNVs from a gCNV callset.
+# Annotate chrX de novo CNVs from a gCNV callset.
 # Usage: Rscript annotate_chrx_denovo_cnv.R CALLSET BINS PED DCRS NPROC OUTPUT
 # * CALLSET - Final callset produced by gCNV pipeline
 # * BINS    - Genomic bins file used by the gCNV pipeline
@@ -9,12 +9,17 @@
 # * NPROC   - Number of processors to use
 # * OUTPUT  - Where to write the output
 
+# Min and max expected average chrX dCR values for XX and XY samples
 XX_MIN <- 1.9
 XX_MAX <- 2.1
 XY_MIN <- 0.9
 XY_MAX <- 1.1
+
+# Maximum sequence length supported by tabix. A hack to get an entire
+# chromosome from a dCR matrix through Rsamtools.
 TABIX_MAX_SEQLEN <- 536870912L
 
+# Functions -------------------------------------------------------------------
 get_coverage <- function(x, y, relation = c("paternal", "maternal")) {
     relation <- match.arg(relation)
     ol <- findOverlaps(x, y)
