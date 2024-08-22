@@ -34,6 +34,7 @@ workflow AnnotateDeNovo {
 
   output {
     File denovo_annotated = DeNovo.denovo_annotated
+    File chrx_denovo_annotated = DeNovo.chrx_denovo_annotated
   }
 }
 
@@ -97,11 +98,20 @@ task DeNovo {
       '~{pedigree}' \
       "${dcrs}" \
       ~{cpus} \
-      'denovo_annotated_calls.bed'
-    gzip 'denovo_annotated_calls.bed'
+      'denovo_annotated_calls.tsv'
+    Rscript /opt/gcnv/scripts/annotate_chrx_denovo_cnv.R \
+      '~{callset}' \
+      '~{intervals}' \
+      '~{pedigree}' \
+      "${dcrs}" \
+      ~{cpus} \
+      'chrx_denovo_annotated_calls.tsv'
+    gzip 'denovo_annotated_calls.tsv'
+    gzip 'chrx_denovo_annotated_calls.tsv'
   >>>
 
   output {
-    File denovo_annotated = "denovo_annotated_calls.bed.gz"
+    File denovo_annotated = "denovo_annotated_calls.tsv.gz"
+    File chrx_denovo_annotated = "chrx_denovo_annotated_calls.tsv.gz"
   }
 }
