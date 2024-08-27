@@ -13,6 +13,10 @@ workflow AnnotateDeNovo {
     Array[File] dcr_files    # denoised coverage ratio files
     Array[File] dcr_indicies # index files
 
+    # This option is for when the dRC matrix filenames are not in the expected
+    # format to allowing parsing of the batch IDs. `batch_ids` is expected to
+    # be parallel to `dcr_files` such that `dcr_files[i]` is the dCR matrix
+    # for the batch with ID `batch_ids[i]`.
     Array[String]? batch_ids
     RuntimeAttr? runtime_attr_override
   }
@@ -52,11 +56,13 @@ task DeNovo {
     RuntimeAttr? runtime_attr_override
   }
 
-  Float input_size = 1.5 * size(dcr_files, "GB")
+  Float input_size = size(dcr_files, "GB") + size(dcr_indicies, "GB") + size(callset, "GB") +
+    size(pedigree, "GB") + size(intervals, "GB")
+  Float output_size = size(callset, "GB")
   RuntimeAttr runtime_default = object {
     mem_gb: 4,
     cpu_cores: 4,
-    disk_gb: ceil(8.0 + input_size),
+    disk_gb: ceil(8.0 + input_size + output_size),
     boot_disk_gb: 16,
     preemptible_tries: 3,
     max_retries: 0
