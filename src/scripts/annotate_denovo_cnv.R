@@ -414,14 +414,14 @@ chrx_denovo <- function(calls, bins, ped, dcrs, nproc) {
     # Gather dCR evidence -----------------------------------------------------
     log_info("gathering dCR evidence")
     dn <- add_parent_batch(dn, calls)
-    rg_info <- mclapply(seq_len(nrow(dn)),
-                        \(i) dcr_evidence(as.list(dn[i, ]), dcrs),
-                        mc.cores = nproc) |>
+    rg <- mclapply(seq_len(nrow(dn)),
+                   \(i) dcr_evidence(as.list(dn[i, ]), dcrs),
+                   mc.cores = nproc) |>
         bind_rows()
 
     # Regenotype --------------------------------------------------------------
     log_info("regenotyping")
-    rg_info <- rg_info |>
+    rg <- rg |>
         mutate(
             sample = dn$sample,
             chr = dn$chr,
@@ -442,8 +442,14 @@ chrx_denovo <- function(calls, bins, ped, dcrs, nproc) {
                   by = "maternal_id")
 
     # Check sex of parents ----------------------------------------------------
-    idx <- rg_info$paternal_sex != 1 | rg_info$maternal_sex != 2
-    rg_info[idx, "inheritance"] <- "fail_parental_sex"
+    inh <- rg$inheritance
+    inh <- replace(inh,
+                   is.na(rg$MF) | is.na(rg$MM),
+                   "fail_miss_parents")
+    inh <- replace(inh,
+                   rg$paternal_sex != 1 | rg$maternal_sex != 2,
+                   "fail_parental_sex")
+    inh <- replace(inh, is.na(rg$M), "fail_miss_child")
 
     # Check offspring is consistent with SV type and sex ----------------------
     # sex  svtype         expected_M
@@ -451,14 +457,18 @@ chrx_denovo <- function(calls, bins, ped, dcrs, nproc) {
     #  XY     DEL  0.00 <= M <= 0.25
     #  XX     DUP  2.75 <= M
     #  XY     DUP  1.75 <= M
-    idx <- with(rg_info, sex == 2L & svtype == "DEL" & abs(M - 1) > 0.25)
-    rg_info[idx, "inheritance"] <- "fail_M"
-    idx <- with(rg_info, sex == 1L & svtype == "DEL" & M > 0.25)
-    rg_info[idx, "inheritance"] <- "fail_M"
-    idx <- with(rg_info, sex == 2L & svtype == "DUP" & M < 2.75)
-    rg_info[idx, "inheritance"] <- "fail_M"
-    idx <- with(rg_info, sex == 1L & svtype == "DUP" & M < 1.75)
-    rg_info[idx, "inheritance"] <- "fail_M"
+    inh <- replace(inh,
+                   rg$sex == 2L & rg$svtype == "DEL" & abs(rg$M - 1) > 0.25,
+                   "fail_M")
+    inh <- replace(inh,
+                   rg$sex == 1L & rg$svtype == "DEL" & M > 0.25,
+                   "fail_M")
+    inh <- replace(inh,
+                   rg$sex == 2L & rg$svtype == "DUP" & M < 2.75,
+                   "fail_M")
+    inh <- replace(inh,
+                   rg$sex == 1L & rg$svtype == "DUP" & M < 1.75,
+                   "fail_M")
 
     # Check for CNV evidence in parents ---------------------------------------
     # We check if a parent has a possible CNV in the same region as a child CNV
@@ -469,27 +479,29 @@ chrx_denovo <- function(calls, bins, ped, dcrs, nproc) {
     # is likely inherited. A threshold of max deviation 0.15 was determined by
     # plotting deviations for random sized subsets of some dCR matrices.
     max_chrx_dev <- 0.15
-    idx <- with(rg_info, svtype == "DEL" & paternal_sex - MF > max_chrx_dev)
-    rg_info[idx, "inheritance"] <- "fail_MF"
-    idx <- with(rg_info, svtype == "DEL" & maternal_sex - MM > max_chrx_dev)
-    rg_info[idx, "inheritance"] <- "fail_MM"
-    idx <- with(rg_info,
-                svtype == "DEL" & paternal_sex - MF > max_chrx_dev & maternal_sex - MM > max_chrx_dev)
-    rg_info[idx, "inheritance"] <- "fail_MF_MM"
+    inh <- replace(inh,
+                   rg$svtype == "DEL" & rg$paternal_sex - rg$MF > max_chrx_dev,
+                   "fail_MF")
+    inh <- replace(inh,
+                   rg$svtype == "DEL" & rg$maternal_sex - rg$MM > max_chrx_dev,
+                   "fail_MM")
+    inh <- replace(inh,
+                   with(rg, svtype == "DEL" & paternal_sex - MF > max_chrx_dev & maternal_sex - MM > max_chrx_dev),
+                   "fail_MF_MM")
+    inh <- replace(inh,
+                   rg$svtype == "DUP" & rg$MF - rg$paternal_sex > max_chrx_dev,
+                   "fail_MF")
+    inh <- replace(inh,
+                   rg$svtype == "DUP" & MM - rg$maternal_sex > max_chrx_dev,
+                   "fail_MM")
+    inh <- replace(inh,
+                   with(rg, svtype == "DUP" & MF - paternal_sex > max_chrx_dev & MM - maternal_sex > max_chrx_dev),
+                   "fail_MF_MM")
 
-    idx <- with(rg_info, svtype == "DUP" & MF - paternal_sex > max_chrx_dev)
-    rg_info[idx, "inheritance"] <- "fail_MF"
-    idx <- with(rg_info, svtype == "DUP" & MM - maternal_sex > max_chrx_dev)
-    rg_info[idx, "inheritance"] <- "fail_MM"
-    idx <- with(rg_info,
-                svtype == "DUP" & MF - paternal_sex > max_chrx_dev & MM - maternal_sex > max_chrx_dev)
-    rg_info[idx, "inheritance"] <- "fail_MF_MM"
-
-    rg_info <- mutate(rg_info,
-                      inheritance = replace(inheritance,
-                                            bins_fail / bins >= 0.5 & bins < 100,
-                                            "fail_bad_bins"))
-    dn$inheritance <- rg_info$inheritance
+    inh <- replace(inh,
+                   rg$bins_fail / rg$bins >= 0.5 & rg$bins < 100,
+                   "fail_bad_bins")
+    dn$inheritance <- inh
 
     dn
 }
