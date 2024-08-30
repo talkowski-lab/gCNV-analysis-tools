@@ -6,12 +6,12 @@ Authors@R:
 Description: Analysis package for the gCNV pipeline.
 Depends:
     data.table (>= 1.16.0),
-    methods,
     R (>= 4.0.0)
 Imports:
     assertify,
     GenomicRanges (>= 1.56.0),
     IRanges (>= 2.38.0),
+    methods,
     Rsamtools (>= 2.20.0),
     S4Vectors (>= 0.42.0),
     utils
