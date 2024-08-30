@@ -68,7 +68,7 @@ df_to_gr.data.frame <- function(x, cnv = FALSE, ...) {
             )
             other_cols <- other_cols[!other_cols %in% .GRANGES_MCOLS_BL]
         }
-        GenomicRanges::mcols(gr) <- x[, other_cols]
+        GenomicRanges::mcols(gr) <- x[, other_cols, drop = FALSE]
     }
 
     gr
