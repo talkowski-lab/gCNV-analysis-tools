@@ -1,6 +1,6 @@
 Package: gelpers
 Title: gCNV Helpers
-Version: 0.0.1
+Version: 0.0.2
 Authors@R:
     person("Justin", "Lim", , "jlim21@mgh.harvard.edu", role = c("aut", "cre"))
 Description: Analysis package for the gCNV pipeline.
