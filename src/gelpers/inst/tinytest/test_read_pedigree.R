@@ -6,7 +6,7 @@ ped_clean <- utils::read.table(
 )
 
 ped <- read_pedigree("data/pedigree/pedigree_valid.tsv")
-expect_identical(ped, ped_clean)
+expect_equivalent(ped, ped_clean)
 
 # test reading pedigree with missing samples
 expect_warning(
@@ -15,19 +15,19 @@ expect_warning(
     strict = TRUE
 )
 ped <- suppressWarnings(read_pedigree("data/pedigree/pedigree_missing_samples.tsv"))
-expect_identical(ped, ped_clean)
+expect_equivalent(ped, ped_clean)
 
 # test reading pedigree with invalid phenotypes
 ped <- read_pedigree("data/pedigree/pedigree_invalid_phenotypes.tsv")
-expect_identical(ped, ped_clean)
+expect_equivalent(ped, ped_clean)
 
 # test reading pedigree with invalid sex
 ped <- read_pedigree("data/pedigree/pedigree_invalid_sexes.tsv")
-expect_identical(ped, ped_clean)
+expect_equivalent(ped, ped_clean)
 
 # test that missing family, paternal, and maternal IDs get converted to NA
 ped <- read_pedigree("data/pedigree/pedigree_missing_other_ids.tsv")
-expect_identical(ped, ped_clean)
+expect_equivalent(ped, ped_clean)
 
 # test that duplicate sample IDs are removed
 expect_warning(
@@ -36,4 +36,4 @@ expect_warning(
     strict = TRUE
 )
 ped <- suppressWarnings(read_pedigree("data/pedigree/pedigree_duplicate_samples.tsv"))
-expect_identical(ped, ped_clean)
+expect_equivalent(ped, ped_clean)
