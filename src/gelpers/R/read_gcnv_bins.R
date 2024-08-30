@@ -18,11 +18,10 @@ read_gcnv_bins <- function(path, reduce = FALSE) {
     assert(is_flag(reduce))
     assert(!is.na(reduce))
 
-    x <- utils::read.table(
-        path,
-        header = FALSE,
-        sep = "\t",
-    )
+    x <- data.table::fread(file = path,
+                           header = FALSE,
+                           sep = "\t",
+                           select = 1:3)
 
     gb <- GBins(
         seqnames = x[[1]],
