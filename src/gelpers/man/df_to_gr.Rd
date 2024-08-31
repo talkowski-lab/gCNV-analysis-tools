@@ -3,11 +3,14 @@
 \name{df_to_gr}
 \alias{df_to_gr}
 \alias{df_to_gr.data.frame}
+\alias{df_to_gr.data.table}
 \title{Create a \code{GRanges} object from a \code{data.frame}}
 \usage{
 df_to_gr(x, ...)
 
 \method{df_to_gr}{data.frame}(x, cnv = FALSE, ...)
+
+\method{df_to_gr}{data.table}(x, cnv = FALSE, ...)
 }
 \arguments{
 \item{x}{A \code{data.frame} with at least the columns \code{chr},

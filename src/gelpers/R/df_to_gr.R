@@ -1,7 +1,10 @@
-.GRANGES_MCOLS_BL <- c(
+GRANGES_MCOLS_BL <- c(
     "seqnames", "ranges", "strand", "seqlevels", "seqlengths", "isCircular",
     "start", "end", "width", "element"
 )
+
+GRANGES_REQ_COLS <- c("chr", "start", "end")
+
 
 #' Create a \code{GRanges} object from a \code{data.frame}
 #'
@@ -36,8 +39,28 @@ df_to_gr <- function(x, ...) {
 #' @export
 #' @method df_to_gr data.frame
 df_to_gr.data.frame <- function(x, cnv = FALSE, ...) {
-    req_cols <- c("chr", "start", "end")
-    assert(df_has_columns(x, .cols = req_cols))
+    gr <- .df_to_gr(x, cnv)
+    mcol_names <- .df_mcol_names(x)
+    GenomicRanges::mcols(gr) <- x[, mcol_names, drop = FALSE]
+
+    gr
+}
+
+#' @rdname df_to_gr
+#' @export
+#' @method df_to_gr data.table
+df_to_gr.data.table <- function(x, cnv = FALSE, ...) {
+    gr <- .df_to_gr(x, cnv)
+    mcol_names <- .df_mcol_names(x)
+    GenomicRanges::mcols(gr) <- x[, .SD, .SDcols = mcol_names]
+
+    gr
+}
+
+.df_to_gr <- function(x, cnv) {
+    assert(is_flag(cnv))
+    assert(!is.na(cnv))
+    assert(df_has_columns(x, .cols = GRANGES_REQ_COLS))
     if (cnv) {
         if (!"svtype" %in% colnames(x)) {
             stop("`svtype` is not in `x`, but `cnv == TRUE`", call. = FALSE)
@@ -54,10 +77,14 @@ df_to_gr.data.frame <- function(x, cnv = FALSE, ...) {
         ranges = IRanges::IRanges(x$start, x$end),
         strand = s
     )
-    
-    other_cols <- colnames(x)[!colnames(x) %in% req_cols]
+
+    gr
+}
+
+.df_mcol_names <- function(x) {
+    other_cols <- colnames(x)[!colnames(x) %in% GRANGES_REQ_COLS]
     if (length(other_cols) > 0) {
-        bad_cols <- other_cols[other_cols %in% .GRANGES_MCOLS_BL]
+        bad_cols <- other_cols[other_cols %in% GRANGES_MCOLS_BL]
         if (length(bad_cols) > 0) {
             warning(
                 paste0(
@@ -66,10 +93,9 @@ df_to_gr.data.frame <- function(x, cnv = FALSE, ...) {
                 ),
                 call. = FALSE
             )
-            other_cols <- other_cols[!other_cols %in% .GRANGES_MCOLS_BL]
+            other_cols <- other_cols[!other_cols %in% GRANGES_MCOLS_BL]
         }
-        GenomicRanges::mcols(gr) <- x[, other_cols, drop = FALSE]
     }
 
-    gr
+    other_cols
 }
