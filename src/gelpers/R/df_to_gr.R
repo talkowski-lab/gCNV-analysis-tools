@@ -41,7 +41,9 @@ df_to_gr <- function(x, ...) {
 df_to_gr.data.frame <- function(x, cnv = FALSE, ...) {
     gr <- .df_to_gr(x, cnv)
     mcol_names <- .df_mcol_names(x)
-    GenomicRanges::mcols(gr) <- x[, mcol_names, drop = FALSE]
+    if (length(mcol_names) > 0) {
+        GenomicRanges::mcols(gr) <- x[, mcol_names, drop = FALSE]
+    }
 
     gr
 }
@@ -52,7 +54,9 @@ df_to_gr.data.frame <- function(x, cnv = FALSE, ...) {
 df_to_gr.data.table <- function(x, cnv = FALSE, ...) {
     gr <- .df_to_gr(x, cnv)
     mcol_names <- .df_mcol_names(x)
-    GenomicRanges::mcols(gr) <- x[, .SD, .SDcols = mcol_names]
+    if (length(mcol_names) > 0) {
+        GenomicRanges::mcols(gr) <- x[, .SD, .SDcols = mcol_names]
+    }
 
     gr
 }
