@@ -7,7 +7,7 @@ RUN apt-get update \
     libssl-dev \
   && rm -rf /var/lib/apt/lists/*
 
-RUN R -e 'install.packages(c("tibble", "dplyr", "BiocManager"))' \
+RUN R -e 'install.packages(c("data.table", "R.utils", "BiocManager"))' \
   && R -e 'BiocManager::install(c("IRanges", "Rsamtools", "S4Vectors", "GenomicRanges"))'
 
 RUN cd /tmp \
