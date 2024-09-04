@@ -438,6 +438,10 @@ log_info("completed calling chrX de novo CNVs")
 # Write output to file --------------------------------------------------------
 common_cols <- intersect(colnames(dn_auto), colnames(dn_chrx))
 dn_all <- rbind(dn_auto[, ..common_cols], dn_chrx[, ..common_cols])
+dn_all <- ped[, c("family_id", "sample_id")][dn_all,
+                                             on = c(sample_id = "sample"),
+                                             mult = "first"]
+setnames(dn_all, "sample_id", "sample")
 
 log_info("writing output")
 write.table(dn_all,
