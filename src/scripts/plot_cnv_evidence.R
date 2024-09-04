@@ -14,7 +14,7 @@
 # Functions -------------------------------------------------------------------
 ALPHANUM <- c(LETTERS, letters, as.character(0:9))
 
-# Parse the command line arguments.
+# Parse the command line arguments
 parse_args <- function(argv) {
     argc <- length(argv)
     if (argc == 5) {
@@ -31,36 +31,33 @@ parse_args <- function(argv) {
     args
 }
 
+# Generate n random alphanumeric strings of length k
 random_str <- function(n, k = 7) {
-    replicate(
-        n,
-        paste0(sample(ALPHANUM, k, replace = TRUE), collapse = ""),
-        simplify = TRUE
-    )
+    replicate(n,
+              paste0(sample(ALPHANUM, k, replace = TRUE), collapse = ""),
+              simplify = TRUE)
 }
 
-# Create the output directory for the plots. Signal error if it already exists.
+# Create the output directory for the plots. Signal error if it already exists
 setup_outdir <- function(path) {
-  if (dir.exists(path)) {
-      stop("Output directory already exists", call. = FALSE)
-  }
+    if (dir.exists(path)) {
+        stop("Output directory already exists", call. = FALSE)
+    }
 
-  success <- dir.create(path)
-  if (!success) {
-      stop("Failed to create output directory", call. = FALSE)
-  }
+    success <- dir.create(path)
+    if (!success) {
+        stop("Failed to create output directory", call. = FALSE)
+    }
 
-  invisible(path)
+    invisible(path)
 }
 
 # From a data.table of CNV calls, return the largest variant as a gregion
-# object.
+# object
 get_largest_variant <- function(x) {
-    complete <- filter(x, complete.cases(chr, start, end))
-    i <- which.max(complete$end - complete$start + 1)
-    r <- as.list(complete[i, c("chr", "start", "end")])
+    m <- x[which.max(end - start)]
 
-    gregion(r$chr, r$start, r$end)
+    gregion(m$chr, m$start, m$end)
 }
 
 # Given a logical vector parallel to the rows of a dCR matrix, indicating
@@ -70,37 +67,36 @@ get_largest_variant <- function(x) {
 # at most two blocks of TRUE's and blocks of TRUE's only at the head and tail
 # of the vector.
 split_dcr_blocks <- function(x) {
-  bls <- rle(x)
-  if (length(bls$lengths) == 3) {
-      left_flank <- c(1L, bls$lengths[[1]])
-      sv <- c(left_flank[[2]] + 1L, left_flank[[2]] + bls$lengths[[2]])
-      right_flank <- c(sv[[2]] + 1L, sv[[2]] + bls$lengths[[3]])
-  } else if (length(bls$lengths) == 2) {
-      if (bls$values[[1]]) {
-          left_flank <- c(1L, bls$lengths[[1]])
-          sv <- c(left_flank[[2]] + 1L, left_flank[[2]] + bls$lengths[[2]])
-          right_flank <- integer(0)
-      } else {
-          left_flank <- integer(0)
-          sv <- c(1L, bls$lengths[[1]])
-          right_flank <- c(sv[[2]] + 1L, sv[[2]] + bls$lengths[[2]])
-      }
-  } else {
-      left_flank <- integer(0)
-      sv <- c(1L, length(x))
-      right_flank <- integer(0)
-  }
+    bls <- rle(x)
+    if (length(bls$lengths) == 3) {
+        left_flank <- c(1L, bls$lengths[[1]])
+        sv <- c(left_flank[[2]] + 1L, left_flank[[2]] + bls$lengths[[2]])
+        right_flank <- c(sv[[2]] + 1L, sv[[2]] + bls$lengths[[3]])
+    } else if (length(bls$lengths) == 2) {
+        if (bls$values[[1]]) {
+            left_flank <- c(1L, bls$lengths[[1]])
+            sv <- c(left_flank[[2]] + 1L, left_flank[[2]] + bls$lengths[[2]])
+            right_flank <- integer(0)
+        } else {
+            left_flank <- integer(0)
+            sv <- c(1L, bls$lengths[[1]])
+            right_flank <- c(sv[[2]] + 1L, sv[[2]] + bls$lengths[[2]])
+        }
+    } else {
+        left_flank <- integer(0)
+        sv <- c(1L, length(x))
+        right_flank <- integer(0)
+    }
 
-  list(left_flank = left_flank, sv = sv, right_flank = right_flank)
+    list(left_flank = left_flank, sv = sv, right_flank = right_flank)
 }
 
-# Convert a genomic range to kilobases.
+# Convert a genomic range to kilobases
 range2kb <- function(start, end) {
-  out <- trunc((end - start + 1) / 1000)
-  return(out)
+    trunc((end - start + 1) / 1000)
 }
 
-# Get the plotting colors to CNV types.
+# Get the plotting colors for CNV types
 svtype_color <- function(x) {
   if (is.na(x)) {
       return("#000000")
@@ -114,7 +110,7 @@ svtype_color <- function(x) {
 }
 
 # Take a data.table of CNV calls, the dCR set corresponding to those calls, a
-# output path and a plot title, write the dCR plot to the output.
+# output path and a plot title, write the dCR plot to the output
 plot_dcr <- function(x, dcr, outfile, main = "") {
     blocks <- split_dcr_blocks(dcr$coords$in_flank)
     png(filename = paste0(outfile, ".png"), width = 647, height = 400)
@@ -217,12 +213,12 @@ get_group_dcr <- function(samples,
     for (i in seq_along(batch_groups)) {
         batch <- names(batch_groups)[[i]]
         dcr <- tryCatch(
-            get_samples_dcr(
-                expanded_region,
-                gethash(dcrs, batch),
-                batch_groups[[i]],
-                include_bg = TRUE
-            ),
+            get_samples_dcr(expanded_region,
+                            gethash(dcrs, batch),
+                            batch_groups[[i]],
+                            include_bg = TRUE,
+                            squeeze = TRUE,
+                            reduce = TRUE),
             error = function(cnd) NULL
         )
 
@@ -230,7 +226,8 @@ get_group_dcr <- function(samples,
             next
         }
 
-        dcr_list[[i]] <- dcr[c(coord_cols, batch_groups[[i]])]
+        dcr_list[[i]] <- as.data.table(dcr[c(coord_cols, batch_groups[[i]])])
+        setkey(dcr_list[[i]], chr, start, end)
 
         bg_samples <- colnames(dcr)[!colnames(dcr) %in% c(coord_cols, samples)]
         if (length(bg_samples) > 0) {
@@ -243,7 +240,8 @@ get_group_dcr <- function(samples,
             colnames(bg_dcr) <- c(
                 coord_cols, paste0(bg_samples, "_", i, random_str(length(bg_samples)))
             )
-            bg_dcr_list[[i]] <- bg_dcr
+            bg_dcr_list[[i]] <- as.data.table(bg_dcr)
+            setkey(bg_dcr_list[[i]], chr, start, end)
         }
     }
 
@@ -254,41 +252,34 @@ get_group_dcr <- function(samples,
         return(NULL)
     }
 
-    merged_dcr <- Reduce(
-        \(x, y) suppressMessages(inner_join(x, y, by = coord_cols)),
-        c(dcr_list, bg_dcr_list)
-    ) |>
-        arrange(chr, start)
+    merged_dcr <- Reduce(merge, c(dcr_list, bg_dcr_list))
+    setkey(merged_dcr, chr, start)
 
     if (nrow(merged_dcr) == 0) {
         return(NULL)
     }
 
     # Assume ranges are disjoint
-    merged_dcr <- mutate(
-        merged_dcr,
-        in_flank = end < region$start | start > region$end
-    )
+    merged_dcr[, in_flank := end < region$start | start > region$end]
 
     bg_samples <- colnames(merged_dcr)[!colnames(merged_dcr) %in% c(coord_cols, samples, "in_flank")]
     fg_samples <- samples[samples %in% colnames(merged_dcr)]
     list(
-        coords = merged_dcr[c(coord_cols, "in_flank")],
-        sample_dcr = merged_dcr[fg_samples],
-        bg_dcr = merged_dcr[bg_samples]
+        coords = merged_dcr[, .SD, .SDcols = c(coord_cols, "in_flank")],
+        sample_dcr = merged_dcr[, .SD, .SDcols = fg_samples],
+        bg_dcr = merged_dcr[, .SD, .SDcols = bg_samples]
     )
 }
 
 plot_denovo_group <- function(x, dcrs, bins, outdir) {
-    calls <- distinct(x, sample, .keep_all = TRUE)
+    calls <- unique(x, by = "sample")
     region <- get_largest_variant(calls)
     dcr <- get_group_dcr(calls$sample, calls$batch, dcrs, region, bins)
     if (is.null(dcr)) {
-        warning(
-            paste0("could not plot de novo '", x[1, ]$variant_name, "' from family '", x[1, ]$family_id, "'"),
-            immediate. = TRUE,
-            call. = FALSE
-        )
+        log_warn(paste0("could not plot de novo '",
+                        x[1, ]$variant_name,
+                        "' from family '",
+                        x[1, ]$family_id, "'"))
         return()
     }
 
@@ -308,11 +299,7 @@ plot_variant_group <- function(x, dcrs, bins, outdir) {
   region <- get_largest_variant(x)
   dcr <- get_group_dcr(x$sample, x$batch, dcrs, region, bins)
   if (is.null(dcr)) {
-      warning(
-          paste0("Could not plot variant ", x[1, ]$variant_name),
-          immediate. = TRUE,
-          call. = FALSE
-      )
+      log_warn(paste0("Could not plot variant ", x[1, ]$variant_name))
       return()
   }
 
@@ -333,15 +320,11 @@ if (length(argv) != 5 && length(argv) != 6) {
 args <- parse_args(argv)
 
 suppressPackageStartupMessages(library(gelpers))
-suppressPackageStartupMessages(library(tibble))
-suppressPackageStartupMessages(library(dplyr))
 
 set.seed(42)
 
-callset <- read_callset(args$callset) |>
-    as_tibble()
-pedigree <- read_pedigree(args$pedigree) |>
-    as_tibble()
+callset <- read_callset(args$callset)
+pedigree <- read_pedigree(args$pedigree)
 dcrs <- read_dcr_list(args$dcrs)
 is_hg19 <- any(c(as.character(1:22), "X", "Y") %in% callset$chr)
 bins <- read_gcnv_bins(args$bins, reduce = is_hg19)
@@ -349,65 +332,49 @@ setup_outdir(args$outdir)
 
 # Run de novo plotting workflow ----------------------------------------------
 if (!is.null(args$denovo)) {
-    message("Running de novo plotting workflow")
-    batches <- select(callset, sample, batch) |>
-        distinct()
-    denovo <- read_callset(args$denovo) |>
-        as_tibble() |>
-        mutate(family_id = as.character(family_id)) |>
-        rename(offspring = sample) |>
-        left_join(pedigree, by = "family_id", relationship = "many-to-many") |>
-        select(family_id, offspring, sample_id, phenotype, svtype, variant_name) |>
-        left_join(
-            select(callset, chr, start, end, svtype, variant_name, sample),
-            by = join_by(sample_id == sample, svtype, variant_name)
-        ) |>
-        mutate(svtype = replace(svtype, is.na(chr), NA)) |>
-        left_join(
-          batches,
-          by = join_by(sample_id == sample),
-          relationship = "many-to-one"
-        ) |>
-        filter(!is.na(batch)) |>
-        rename(sample = sample_id)
+    log_info("Running de novo plotting workflow")
+    batches <- unique(callset[, c("sample", "batch")])
+    callset <- callset[, list(chr, start, end, svtype, variant_name, sample)]
+    denovo <- read_callset(args$denovo)
+    denovo[, family_id := as.character(family_id)]
+    setnames(denovo, "sample", "offspring")
+    denovo <- pedigree[, c("family_id", "sample_id", "phenotype")][denovo, on = "family_id"]
+    denovo <- denovo[, list(family_id, offspring, sample_id, phenotype, svtype, variant_name)]
+    denovo <- callset[denovo, on = c(sample = "sample_id", "svtype", "variant_name"), mult = "first"]
+    denovo[is.na(chr), svtype := NA]
+    denovo <- batches[denovo, on = "sample", mult = "first"]
+    denovo <- denovo[!is.na(batch)]
 
     # Sometimes there are families in which multiple offspring possess a denovo CNV
     # and causes there to be fewer family groups than denovo calls.
-    grps <- split(
-        seq_len(nrow(denovo)),
-        as.factor(paste0(denovo$family_id, denovo$variant_name))
-    )
+    grps <- split(denovo, by = c("family_id", "variant_name"))
     for (g in grps) {
-        message(
-            paste0(
-                "Plotting de novo '",
-                denovo[g[[1]], ]$variant_name,
-                "' for family '",
-                denovo[g[[1]], ]$family_id,
-                "'"
-            )
-        )
-        plot_denovo_group(denovo[g, ], dcrs, bins, args$outdir)
-
+        log_info(paste0("Plotting de novo '",
+                        g[1, ]$variant_name,
+                        "' for family '",
+                        g[1, ]$family_id,
+                        "'"))
+        plot_denovo_group(g, dcrs, bins, args$outdir)
     }
+    log_info("Completed de novo CNV plotting")
     quit(save = "no")
 }
 
 # Run variant group plotting workflow ----------------------------------------
-message("Running variant plotting workflow")
-pedigree <- select(pedigree, sample_id, phenotype, family_id)
-callset <- left_join(
-    callset, pedigree,
-    by = join_by(sample == sample_id),
-    multiple = "any"
-) |>
-    distinct(sample, variant_name, .keep_all = TRUE)
+log_info("Running variant plotting workflow")
+pedigree <- pedigree[, list(sample_id, phenotype)]
+setkey(pedigree, sample_id)
+
+setkey(callset, sample)
+callset <- pedigree[callset, on = c(sample_id = "sample"), mult = "first"]
+setnames(callset, "sample_id", "sample")
+setkey(callset, sample, variant_name)
+callset <- unique(callset, by = c("sample", "variant_name"))
 
 # Split callset by variant ID
-variant_groups <- split(callset, callset$variant_name)
-for (vg in variant_groups) {
-  message(
-    paste0("Plotting variant ", vg[1, ]$variant_name)
-  )
-  plot_variant_group(vg, dcrs, bins, args$outdir)
+var_grps <- split(callset, by = "variant_name")
+for (vg in var_grps) {
+    log_info(paste0("Plotting variant ", vg[1, ]$variant_name))
+    plot_variant_group(vg, dcrs, bins, args$outdir)
 }
+log_info("Completed variant group plotting")
