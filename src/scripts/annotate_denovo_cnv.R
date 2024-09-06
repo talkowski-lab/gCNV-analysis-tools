@@ -9,6 +9,158 @@
 # * NPROC   - Number of processors to use
 # * OUTPUT  - Path to the output
 
+DEFAULT_OPTS <- list(recal_freq = TRUE,
+                     hq_cols = "PASS_SAMPLE,PASS_QS",
+                     max_freq = 0.01,
+                     cpus = 1L)
+
+DEFAULT_ARGS <- list(CALLSET = NULL,
+                     BINS = NULL,
+                     PED = NULL,
+                     DCRS = NULL,
+                     OUTPUT = NULL)
+
+
+usage <- function() {
+'Usage: Rscript annotate_denovo_cnv.R [OPTIONS] CALLSET BINS PED DCRS OUTPUT
+
+CALLSET  Final callset produced by gCNV pipeline
+BINS     Genomic intervals file used by gCNV pipeline
+PED      Pedigree file
+DCRS     A file with either the paths, one per line, to the dCR matrices or
+         two tab-separated columns with the batch ID in the first column and
+         path to the dCR matrix for that batch in the second column
+OUTPUT   Where to write the output
+
+Options:
+  -h,--help               Print this message and exit.
+  -n,--no-recal-freq      Do not recalibrate the variant frequency. If this
+                          option is given, there must be a column named "sf" in
+                          CALLSET with the frequency of each variant. [FALSE]
+  -c,--hq-cols[=]<cols>   Comma-separated list of logical columns in CALLSET
+                          that must all be TRUE for a call to be considered
+                          high-quality. [PASS_SAMPLE,PASS_QS]
+  -f,--max-freq[=]<freq>  Exclusive maximum variant frequency for a CNV to be
+                          considered rare. Only rare de novo CNVs are annotated.
+                          [0.01]
+  -p,--cpus[=]<cpus>      Number of processors to use. [1]
+'
+}
+
+msg_and_exit <- function(msg, status = 1) {
+    cat(msg, sep = "", file = stderr())
+    quit(save = "no", status)
+}
+
+opt_arg <- function(x, m, i) {
+    matches <- regmatches(x[[i]], m)[[1]]
+    can_inc <- i + 1 <= length(x)
+    opt <- ""
+    if (length(matches) == 1) { # ^-a$
+        opt <- matches[[1]]
+    } else if (length(matches) == 3) { # ^(--long)(=(.*)?)?$
+        if (!nzchar(matches[[3]])) {
+            opt <- matches[[2]]
+        } else {
+            return(list(matches[[3]], i + 1))
+        }
+    } else { # ^((-a)|((--long)(=(.*)?)?))$
+        if (!nzchar(matches[[7]])) {
+            opt <- matches[[5]]
+        } else {
+            return(list(matches[[7]], i + 1))
+        }
+    }
+
+    if (!can_inc) {
+        msg_and_exit(sprintf("option %s requires an argument", opt))
+    }
+
+    list(x[[i + 1]], i + 2)
+}
+
+parse_args <- function() {
+    argv <- commandArgs(trailingOnly = TRUE)
+    if (length(argv) == 0) {
+        msg_and_exit(usage(), 0)
+    }
+
+    opts <- DEFAULT_OPTS
+    args <- DEFAULT_ARGS
+
+    j <- 1
+    i <- 1
+    while (i <= length(argv)) {
+        if (grepl("^((-h)|(--help))$", argv[[i]])) {
+            msg_and_exit(usage(), 0)
+        }
+        if (grepl("^((-n)|(--no-recal-freq))$", argv[[i]])) {
+            opts$recal_freq <- FALSE
+            i <- i + 1
+            next
+        }
+
+        if (all((m <- regexec("^((-c)|((--hq-cols)(=(.*)?)?))$", argv[[i]]))[[1]] != -1)) {
+            x <- opt_arg(argv, m, i)
+            opts$hq_cols <- x[[1]]
+            i <- x[[2]]
+            next
+        }
+
+        if (all((m <- regexec("^((-f)|((--max-freq)(=(.*)?)?))$", argv[[i]]))[[1]] != -1)) {
+            x <- opt_arg(argv, m, i)
+            opts$max_freq <- tryCatch(
+                as.double(x[[1]]),
+                warning = \(cnd) msg_and_exit(sprintf("could not convert '%s' to double\n", x[[1]])),
+                error = \(cnd) msg_and_exit(sprintf("could not convert '%s' to double\n", x[[1]]))
+            )
+            if (opts$max_freq < 0 || opts$max_freq > 1) {
+                msg_and_exit("maximum frequency must be between 0 and 1 inclusive")
+            }
+            i <- x[[2]]
+            next
+        }
+
+        if (all((m <- regexec("^((-p)|((--cpus)(=(.*)?)?))$", argv[[i]]))[[1]] != -1)) {
+            x <- opt_arg(argv, m, i)
+            opts$cpus <- tryCatch(
+                as.integer(x[[1]]),
+                warning = \(cnd) msg_and_exit(sprintf("could not convert '%s' to integer\n", x[[1]])),
+                error = \(cnd) msg_and_exit(sprintf("could not convert '%s' to integer\n", x[[1]]))
+            )
+            if (opts$cpus < 1) {
+                msg_and_exit("number of processors must be greater than 0")
+            }
+            i <- x[[2]]
+            next
+        }
+
+        if (grepl("^-", argv[[i]])) {
+            msg_and_exit(sprintf("unknown option %s\n", argv[[i]]))
+        } else {
+            if (j < length(args)) {
+                args[[j]] <- argv[[i]]
+                j <- j + 1
+                i <- i + 1
+            } else {
+                msg_and_exit("too many arguments\n")
+            }
+        }
+    }
+
+    print(opts)
+    print(args)
+    missing_args <- Filter(is.null, args)
+    if (length(missing_args) > 0) {
+        msg_and_exit(sprintf("required arguments %s are missing\n",
+                             paste0(names(missing_args), collapse = ", ")))
+    }
+
+    append(args, opts)
+}
+
+args <- parse_args()
+
 suppressPackageStartupMessages(library(gelpers))
 suppressPackageStartupMessages(library(GenomicRanges))
 suppressPackageStartupMessages(library(parallel))
@@ -401,34 +553,26 @@ chrx_denovo <- function(calls, bins, ped, dcrs, nproc) {
     dn
 }
 
-# Parse command-line arguments ------------------------------------------------
-argv <- commandArgs(trailingOnly = TRUE)
-if (length(argv) != 6) {
-    stop("Incorrect number of arguments", call. = FALSE)
-}
-callset_path <- argv[[1]]
-bins_path <- argv[[2]]
-ped_path <- argv[[3]]
-dcrs_path <- argv[[4]]
-nproc <- as.integer(argv[[5]])
-output <- argv[[6]]
-
 # Read inputs -----------------------------------------------------------------
 log_info("reading callset")
-raw_calls <- read_callset(callset_path)
+raw_calls <- read_callset(args$CALLSET)
 is_hg19 <- any(c(as.character(1:22), "X", "Y") %in% raw_calls$chr)
 
 log_info("reading bins")
-bins <- read_gcnv_bins(bins_path, reduce = is_hg19)
+bins <- read_gcnv_bins(args$BINS, reduce = is_hg19)
 
 log_info("reading pedigree")
-ped <- suppressWarnings(read_pedigree(ped_path))
+ped <- suppressWarnings(read_pedigree(args$PED))
 
 log_info("reading dCR paths")
-dcrs <- read_dcr_list(dcrs_path)
+dcrs <- read_dcr_list(args$DCRS)
 
 log_info("calling autosome de novo CNVs")
-dn_auto <- autosome_denovo(raw_calls, bins, ped, dcrs, nproc)
+dn_auto <- autosome_denovo(raw_calls, bins, ped, dcrs,
+                           hq_cols = args$hq_cols,
+                           recal_freq = args$recal_freq,
+                           max_freq = args$max_freq,
+                           cpus = args$cpus)
 log_info("completed calling autosome de novo CNVs")
 
 log_info("calling chrX de novo CNVs")
