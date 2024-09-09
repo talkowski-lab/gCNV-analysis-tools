@@ -288,7 +288,10 @@ predict_sex <- function(x, dcr_map, nproc = 1L) {
             return(sex_from_dcr(samples, as.data.table(dcr)))
         }
     }
+    old_dtthreads <- getDTthreads()
+    setDTthreads(1)
     sexes <- mcmapply(f, dcr_groups, names(dcr_groups), SIMPLIFY = FALSE, mc.cores = nproc)
+    setDTthreads(old_dtthreads)
 
     rbindlist(sexes)
 }
@@ -584,6 +587,8 @@ chrx_denovo <- function(calls, bins, ped, dcrs, recal_freq, hq_cols, max_freq, n
 }
 
 # Read inputs -----------------------------------------------------------------
+setDTthreads(args$cpus)
+
 log_info("reading callset")
 raw_calls <- read_callset(args$CALLSET)
 is_hg19 <- any(c(as.character(1:22), "X", "Y") %in% raw_calls$chr)
