@@ -102,7 +102,10 @@ parse_args <- function() {
 
         if (all((m <- regexec("^((-c)|((--hq-cols)(=(.*)?)?))$", argv[[i]]))[[1]] != -1)) {
             x <- opt_arg(argv, m, i)
-            opts$hq_cols <- x[[1]]
+            opts$hq_cols <- trimws(strsplit(x[[1]], split = ",", fixed = TRUE)[[1]])
+            if (any(!nzchar(opts$hq_cols))) {
+                msg_and_exit("names of HQ columns cannot be empty\n")
+            }
             i <- x[[2]]
             next
         }
@@ -115,7 +118,7 @@ parse_args <- function() {
                 error = \(cnd) msg_and_exit(sprintf("could not convert '%s' to double\n", x[[1]]))
             )
             if (opts$max_freq < 0 || opts$max_freq > 1) {
-                msg_and_exit("maximum frequency must be between 0 and 1 inclusive")
+                msg_and_exit("maximum frequency must be between 0 and 1 inclusive\n")
             }
             i <- x[[2]]
             next
@@ -129,7 +132,7 @@ parse_args <- function() {
                 error = \(cnd) msg_and_exit(sprintf("could not convert '%s' to integer\n", x[[1]]))
             )
             if (opts$cpus < 1) {
-                msg_and_exit("number of processors must be greater than 0")
+                msg_and_exit("number of processors must be greater than 0\n")
             }
             i <- x[[2]]
             next
@@ -138,7 +141,7 @@ parse_args <- function() {
         if (grepl("^-", argv[[i]])) {
             msg_and_exit(sprintf("unknown option %s\n", argv[[i]]))
         } else {
-            if (j < length(args)) {
+            if (j <= length(args)) {
                 args[[j]] <- argv[[i]]
                 j <- j + 1
                 i <- i + 1
@@ -148,11 +151,9 @@ parse_args <- function() {
         }
     }
 
-    print(opts)
-    print(args)
     missing_args <- Filter(is.null, args)
     if (length(missing_args) > 0) {
-        msg_and_exit(sprintf("required arguments %s are missing\n",
+        msg_and_exit(sprintf("required argument(s) %s missing\n",
                              paste0(names(missing_args), collapse = ", ")))
     }
 
@@ -342,7 +343,20 @@ recal_cnv_freq <- function(calls, ped) {
     recal
 }
 
-autosome_denovo <- function(calls, bins, ped, dcrs, nproc) {
+filter_hq_calls <- function(calls, cols) {
+    missing_cols <- colnames(calls)[!cols %in% colnames(calls)]
+    if (length(missing_cols) > 0) {
+        stop(sprintf("HQ columns not found in callset: %s",
+                     paste0(missing_cols, collapse = ", ")),
+             call. = FALSE)
+    }
+
+    x <- paste0(cols, collapse = " & ")
+
+    calls[eval(parse(text = x))]
+}
+
+autosome_denovo <- function(calls, bins, ped, dcrs, recal_freq, hq_cols, max_freq, nproc) {
     calls <- calls[!grepl("X|Y", chr)]
     ped <- ped[, list(sample_id, paternal_id, maternal_id)]
 
@@ -359,11 +373,17 @@ autosome_denovo <- function(calls, bins, ped, dcrs, nproc) {
     setkey(ped, NULL)
 
     # Recalibrate offspring CNV frequency to parents' -------------------------
-    calls <- recal_cnv_freq(calls, ped)
+    if (recal_freq) {
+        calls <- recal_cnv_freq(calls, ped)
+    } else if (!"sf" %in% colnames(calls)) {
+        stop("not recomputing variant frequency, but no 'sf' column in callset",
+             call. = FALSE)
+    }
     setkey(calls, sample)
 
     # Filter to high quality calls and merge in pedigree ----------------------
-    child_calls <- calls[PASS_SAMPLE & PASS_QS & sf < 0.01]
+    child_calls <- filter_hq_calls(calls, hq_cols)
+    child_calls <- child_calls[sf < get("max_freq", envir = parent.frame(-2))]
     child_calls <- child_calls[ped, on = c(sample = "sample_id"), nomatch = NULL]
 
     # Get preliminary de novo calls based on CNV overlap ----------------------
@@ -418,7 +438,7 @@ autosome_denovo <- function(calls, bins, ped, dcrs, nproc) {
     dn
 }
 
-chrx_denovo <- function(calls, bins, ped, dcrs, nproc) {
+chrx_denovo <- function(calls, bins, ped, dcrs, recal_freq, hq_cols, max_freq, nproc) {
     # Need the sex column of every sample
     ped <- ped[sample_id %in% unique(calls$sample) & !is.na(sex)]
 
@@ -484,10 +504,16 @@ chrx_denovo <- function(calls, bins, ped, dcrs, nproc) {
     ped <- ped[maternal_id %in% calls$sample]
 
     # Recalibrate offspring CNV frequency to parents' -------------------------
-    calls <- recal_cnv_freq(calls, ped)
+    if (recal_freq) {
+        calls <- recal_cnv_freq(calls, ped)
+    } else if (!"sf" %in% colnames(calls)) {
+        stop("not recomputing variant frequency, but no 'sf' column in callset",
+             call. = FALSE)
+    }
 
     # Filter to high quality calls and merge in pedigree ----------------------
-    child_calls <- calls[PASS_SAMPLE & PASS_QS & sf < 0.01 & grepl("X", chr)]
+    child_calls <- filter_hq_calls(calls, hq_cols)
+    child_calls <- child_calls[sf < get("max_freq", envir = parent.frame(-2)) & grepl("X", chr)]
     child_calls <- child_calls[ped, on = c(sample = "sample_id"), nomatch = NULL]
 
     # Get preliminary de novo calls based on CNV overlap ----------------------
@@ -553,6 +579,8 @@ chrx_denovo <- function(calls, bins, ped, dcrs, nproc) {
     dn
 }
 
+args <- parse_args()
+
 # Read inputs -----------------------------------------------------------------
 log_info("reading callset")
 raw_calls <- read_callset(args$CALLSET)
@@ -569,14 +597,18 @@ dcrs <- read_dcr_list(args$DCRS)
 
 log_info("calling autosome de novo CNVs")
 dn_auto <- autosome_denovo(raw_calls, bins, ped, dcrs,
-                           hq_cols = args$hq_cols,
                            recal_freq = args$recal_freq,
+                           hq_cols = args$hq_cols,
                            max_freq = args$max_freq,
-                           cpus = args$cpus)
+                           nproc = args$cpus)
 log_info("completed calling autosome de novo CNVs")
 
 log_info("calling chrX de novo CNVs")
-dn_chrx <- chrx_denovo(raw_calls, bins, ped, dcrs, nproc)
+dn_chrx <- chrx_denovo(raw_calls, bins, ped, dcrs,
+                       recal_freq = args$recal_freq,
+                       hq_cols = args$hq_cols,
+                       max_freq = args$max_freq,
+                       nproc = args$nproc)
 log_info("completed calling chrX de novo CNVs")
 
 # Write output to file --------------------------------------------------------
