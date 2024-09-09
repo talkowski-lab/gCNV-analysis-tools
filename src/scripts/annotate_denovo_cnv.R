@@ -10,7 +10,7 @@
 # * OUTPUT  - Path to the output
 
 DEFAULT_OPTS <- list(recal_freq = TRUE,
-                     hq_cols = "PASS_SAMPLE,PASS_QS",
+                     hq_cols = c("PASS_SAMPLE", "PASS_QS"),
                      max_freq = 0.01,
                      cpus = 1L)
 
@@ -344,7 +344,7 @@ recal_cnv_freq <- function(calls, ped) {
 }
 
 filter_hq_calls <- function(calls, cols) {
-    missing_cols <- colnames(calls)[!cols %in% colnames(calls)]
+    missing_cols <- cols[!cols %in% colnames(calls)]
     if (length(missing_cols) > 0) {
         stop(sprintf("HQ columns not found in callset: %s",
                      paste0(missing_cols, collapse = ", ")),
@@ -352,6 +352,10 @@ filter_hq_calls <- function(calls, cols) {
     }
 
     x <- paste0(cols, collapse = " & ")
+
+    if (length(cols) == 1) {
+        return(calls[x == TRUE])
+    }
 
     calls[eval(parse(text = x))]
 }
@@ -383,7 +387,7 @@ autosome_denovo <- function(calls, bins, ped, dcrs, recal_freq, hq_cols, max_fre
 
     # Filter to high quality calls and merge in pedigree ----------------------
     child_calls <- filter_hq_calls(calls, hq_cols)
-    child_calls <- child_calls[sf < get("max_freq", envir = parent.frame(-2))]
+    child_calls <- child_calls[sf < get("max_freq", envir = parent.frame(3))]
     child_calls <- child_calls[ped, on = c(sample = "sample_id"), nomatch = NULL]
 
     # Get preliminary de novo calls based on CNV overlap ----------------------
@@ -513,7 +517,7 @@ chrx_denovo <- function(calls, bins, ped, dcrs, recal_freq, hq_cols, max_freq, n
 
     # Filter to high quality calls and merge in pedigree ----------------------
     child_calls <- filter_hq_calls(calls, hq_cols)
-    child_calls <- child_calls[sf < get("max_freq", envir = parent.frame(-2)) & grepl("X", chr)]
+    child_calls <- child_calls[sf < get("max_freq", envir = parent.frame(3)) & grepl("X", chr)]
     child_calls <- child_calls[ped, on = c(sample = "sample_id"), nomatch = NULL]
 
     # Get preliminary de novo calls based on CNV overlap ----------------------
@@ -606,7 +610,7 @@ dn_chrx <- chrx_denovo(raw_calls, bins, ped, dcrs,
                        recal_freq = args$recal_freq,
                        hq_cols = args$hq_cols,
                        max_freq = args$max_freq,
-                       nproc = args$nproc)
+                       nproc = args$cpus)
 log_info("completed calling chrX de novo CNVs")
 
 # Write output to file --------------------------------------------------------
@@ -619,7 +623,7 @@ setnames(dn_all, "sample_id", "sample")
 
 log_info("writing output")
 write.table(dn_all,
-            file = output,
+            file = args$OUTPUT,
             sep = "\t",
             col.names = TRUE,
             row.names = FALSE,
