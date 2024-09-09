@@ -579,8 +579,6 @@ chrx_denovo <- function(calls, bins, ped, dcrs, recal_freq, hq_cols, max_freq, n
     dn
 }
 
-args <- parse_args()
-
 # Read inputs -----------------------------------------------------------------
 log_info("reading callset")
 raw_calls <- read_callset(args$CALLSET)
