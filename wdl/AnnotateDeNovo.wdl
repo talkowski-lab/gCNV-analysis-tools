@@ -18,6 +18,11 @@ workflow AnnotateDeNovo {
     # be parallel to `dcr_files` such that `dcr_files[i]` is the dCR matrix
     # for the batch with ID `batch_ids[i]`.
     Array[String]? batch_ids
+
+    Boolean? no_recal_freq # don't recalulate variant frequency
+    String? hq_cols        # list of columns that indicate high-quality calls
+    Float? max_freq        # maximum variant frequency to consider
+
     RuntimeAttr? runtime_attr_override
   }
 
@@ -33,6 +38,11 @@ workflow AnnotateDeNovo {
       dcr_indicies = dcr_indicies,
 
       batch_ids = batch_ids,
+
+      no_recal_freq = no_recal_freq,
+      hq_cols = hq_cols,
+      max_freq = max_freq,
+
       runtime_attr_override = runtime_attr_override
   }
 
@@ -53,6 +63,11 @@ task DeNovo {
     Array[File] dcr_indicies
 
     Array[String]? batch_ids
+
+    Boolean? no_recal_freq
+    String? hq_cols
+    Float? max_freq
+
     RuntimeAttr? runtime_attr_override
   }
 
@@ -98,11 +113,14 @@ task DeNovo {
       dcrs="${dcr_paths}"
     fi
     Rscript /opt/gcnv/scripts/annotate_denovo_cnv.R \
+      ${defined(no_recal_freq) then "--no-recal-freq" else ""} \
+      ${defined(hq_cols) then "--hq-cols ${hq_cols}" else ""} \
+      ${defined(max_freq) then "--max-freq ${max_freq}" else ""} \
+      --cpus ~{cpus} \
       '~{callset}' \
       '~{intervals}' \
       '~{pedigree}' \
       "${dcrs}" \
-      ~{cpus} \
       'denovo_annotated_calls.tsv'
     gzip 'denovo_annotated_calls.tsv'
   >>>
