@@ -113,9 +113,9 @@ task DeNovo {
       dcrs="${dcr_paths}"
     fi
     Rscript /opt/gcnv/scripts/annotate_denovo_cnv.R \
-      ${defined(no_recal_freq) then "--no-recal-freq" else ""} \
-      ${defined(hq_cols) then "--hq-cols ${hq_cols}" else ""} \
-      ${defined(max_freq) then "--max-freq ${max_freq}" else ""} \
+      ${if defined(no_recal_freq) then "--no-recal-freq" else ""} \
+      ${if defined(hq_cols) then "--hq-cols ${hq_cols}" else ""} \
+      ${if defined(max_freq) then "--max-freq ${max_freq}" else ""} \
       --cpus ~{cpus} \
       '~{callset}' \
       '~{intervals}' \
