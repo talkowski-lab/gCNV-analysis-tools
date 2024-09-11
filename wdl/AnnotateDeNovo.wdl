@@ -19,9 +19,9 @@ workflow AnnotateDeNovo {
     # for the batch with ID `batch_ids[i]`.
     Array[String]? batch_ids
 
-    Boolean? no_recal_freq # don't recalulate variant frequency
-    String? hq_cols        # list of columns that indicate high-quality calls
-    Float? max_freq        # maximum variant frequency to consider
+    Boolean? recal_freq # recalulate variant frequency (default is true)
+    String? hq_cols     # list of columns that indicate high-quality calls
+    Float? max_freq     # maximum variant frequency to consider
 
     RuntimeAttr? runtime_attr_override
   }
@@ -39,7 +39,7 @@ workflow AnnotateDeNovo {
 
       batch_ids = batch_ids,
 
-      no_recal_freq = no_recal_freq,
+      recal_freq = recal_freq,
       hq_cols = hq_cols,
       max_freq = max_freq,
 
@@ -64,7 +64,7 @@ task DeNovo {
 
     Array[String]? batch_ids
 
-    Boolean? no_recal_freq
+    Boolean? recal_freq
     String? hq_cols
     Float? max_freq
 
@@ -113,9 +113,9 @@ task DeNovo {
       dcrs="${dcr_paths}"
     fi
     Rscript /opt/gcnv/scripts/annotate_denovo_cnv.R \
-      ~{if defined(no_recal_freq) then "--no-recal-freq \" else ""}
-      ~{if defined(hq_cols) then "--hq-cols ~{hq_cols} \" else ""}
-      ~{if defined(max_freq) then "--max-freq ~{max_freq} \" else ""}
+      ~{if select_first([recal_freq, true]) then "" else "--no-recal-freq"} \
+      ~{if defined(hq_cols) then "--hq-cols ~{hq_cols}" else ""} \
+      ~{if defined(max_freq) then "--max-freq ~{max_freq}" else ""} \
       --cpus ~{cpus} \
       '~{callset}' \
       '~{intervals}' \
