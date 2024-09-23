@@ -100,8 +100,8 @@ task PloidyMatrix {
       '~{callset}' \
       "${dcrs}" \
       '~{write_lines(ploidy_contigs)}' \
-      'ploidy_matrix.tsv
-    gzip 'ploidy_matrix.tsv'
+      ploidy_matrix.tsv
+    gzip ploidy_matrix.tsv
   >>>
 
   output {
