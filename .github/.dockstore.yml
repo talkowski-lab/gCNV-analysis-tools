@@ -17,3 +17,12 @@ workflows:
         - main
       tags:
         - /.*/
+
+  - name: MakePloidyMatrix
+    subclass: WDL
+    primaryDescriptorPath: /wdl/MakePloidyMatrix.wdl
+    filters:
+      branches:
+        - main
+      tags:
+        - /.*/
