@@ -2,7 +2,7 @@ version 1.0
 
 import "Structs.wdl"
 
-workflow PloidyMatrix {
+workflow MakePloidyMatrix {
   input {
     File callset
 
@@ -17,7 +17,7 @@ workflow PloidyMatrix {
     RuntimeAttr? runtime_attr_override
   }
 
-  call MakePloidyMatrix {
+  call PloidyMatrix {
     input:
       callset = callset,
 
@@ -33,11 +33,11 @@ workflow PloidyMatrix {
   }
 
   output {
-    File ploidy_matrix = MakePloidyMatrix.ploidy_matrix
+    File ploidy_matrix = PloidyMatrix.ploidy_matrix
   }
 }
 
-task MakePloidyMatrix {
+task PloidyMatrix {
   input {
     File callset
 
