@@ -1,7 +1,7 @@
 # dCR plotting pipeline
 #
 # Generate dCR plots for possible de novo CNVs or a group of clustered CNVs.
-# Usage: Rscript plot_dcr.R CALLSET [DENOVO] BINS PED DCRS OUTDIR
+# Usage: Rscript plot_cnv_evidence.R CALLSET [DENOVO] BINS PED DCRS OUTDIR
 # * CALLSET - If DENOVO is given, the full callset produced by the gCNV
 #             pipeline. Otherwise, the subset of the callset for the variants
 #             to plot
@@ -11,7 +11,6 @@
 # * DCRS    - List of paths, one per line, to the dCR matrices
 # * OUTDIR  - Output directory. Must not exist
 
-# Functions -------------------------------------------------------------------
 ALPHANUM <- c(LETTERS, letters, as.character(0:9))
 
 # Parse the command line arguments
@@ -24,9 +23,7 @@ parse_args <- function(argv) {
     } else {
         args <- as.list(argv)
     }
-    names(args) <- c(
-        "callset", "denovo", "bins", "pedigree", "dcrs", "outdir"
-    )
+    names(args) <- c("callset", "denovo", "bins", "pedigree", "dcrs", "outdir")
 
     args
 }
@@ -93,103 +90,119 @@ split_dcr_blocks <- function(x) {
 
 # Convert a genomic range to kilobases
 range2kb <- function(start, end) {
-    trunc((end - start + 1) / 1000)
+    round((end - start + 1) / 1000, 1)
 }
 
 # Get the plotting colors for CNV types
 svtype_color <- function(x) {
-  if (is.na(x)) {
+    if (is.na(x)) {
       return("#000000")
-  } else if (x == "DEL") {
+    } else if (x == "DEL") {
       return("#D43925")
-  } else if (x == "DUP") {
+    } else if (x == "DUP") {
       return("#2376B2")
-  }
+    }
 
-  "#000000"
+    "#000000"
 }
 
-# Take a data.table of CNV calls, the dCR set corresponding to those calls, a
-# output path and a plot title, write the dCR plot to the output
-plot_dcr <- function(x, dcr, outfile, main = "") {
-    blocks <- split_dcr_blocks(dcr$coords$in_flank)
-    png(filename = paste0(outfile, ".png"), width = 647, height = 400)
-    old_par <- par(font.lab = 2, mar = c(4, 4, 4, 2) + 0.1)
-    matplot(
-        data.matrix(dcr$bg_dcr),
-        type = "l",
-        lty = 1,
-        ylim = c(0, 5),
-        col = "#77777777",
-        xlab = "Interval",
-        ylab = "Denoised Coverage",
-        main = main
-    )
+plot_single_interval <- function(x, dcr, main = "") {
+    boxplot(as.double(dcr$bg_dcr[1, ]),
+            horizontal = TRUE,
+            outline = FALSE,
+            xlab = "Denoised Coverage",
+            ylab = "",
+            ylim = c(0, 5),
+            main = main)
     for (i in seq_len(nrow(x))) {
         sample_id <- x[i, ]$sample
         phen <- x[i, ]$phenotype
         svtype <- x[i, ]$svtype
-        lines(
-            dcr$sample_dcr[[sample_id]],
-            lwd = 3,
-            lty = if (!is.na(phen) && phen == 2) "solid" else "dashed",
-            col = svtype_color(svtype)
-        )
+        points(dcr$sample_dcr[1, ..sample_id],
+               1 + runif(1, -0.1, 0.1),
+               pch = if (!is.na(phen) && phen == 2) 15 else 19,
+               cex = 1.5,
+               col = svtype_color(svtype))
     }
+    legend("topleft",
+           legend = c("DUP", "DEL", "Unknown"),
+           col = c("#2376B2", "#D43925", "#000000"),
+           pch = 19,
+           bty = "n")
+    legend("topright",
+           legend = c("Affected", "Unaffected"),
+           pch = c(15, 19),
+           bty = "n")
+}
+
+plot_mult_interval <- function(x, dcr, main = "") {
+    blocks <- split_dcr_blocks(dcr$coords$in_flank)
+    matplot(data.matrix(dcr$bg_dcr),
+            type = "l",
+            lty = 1,
+            ylim = c(0, 5),
+            col = "#77777777",
+            xlab = "Interval",
+            ylab = "Denoised Coverage",
+            main = main)
+
+    for (i in seq_len(nrow(x))) {
+        sample_id <- x[i, ]$sample
+        phen <- x[i, ]$phenotype
+        svtype <- x[i, ]$svtype
+        lines(dcr$sample_dcr[[sample_id]],
+              lwd = 3,
+              lty = if (!is.na(phen) && phen == 2) "solid" else "dashed",
+              col = svtype_color(svtype))
+    }
+
     if (length(blocks$left_flank) > 0) {
         rect(1, 0, blocks$left_flank[[2]] + 0.5, 5, col = "#33333311", border = NA)
-        text(
-            1, 0.3,
-            labels = paste0(
-                blocks$left_flank[[2]] - blocks$left_flank[[1]] + 1,
-                " intervals: ",
-                range2kb(
-                    dcr$coords[blocks$left_flank[[1]], "start"],
-                    dcr$coords[blocks$left_flank[[2]], "end"]
-                ),
-                "kb"
-            ),
+        text(1, 0.3,
+            labels = paste0(blocks$left_flank[[2]] - blocks$left_flank[[1]] + 1,
+                            " intervals: ",
+                            range2kb(dcr$coords[blocks$left_flank[[1]], "start"],
+                                     dcr$coords[blocks$left_flank[[2]], "end"]),
+                            "kb"),
             pos = 4,
             offset = 0.3,
-            cex = 0.9
-        )
+            cex = 0.9)
     }
     if (length(blocks$right_flank) > 0) {
-        rect(
-            blocks$right_flank[[1]] - 0.5, 0,
-            blocks$right_flank[[2]], 5,
-            col = "#33333311",
-            border = NA
-        )
-        text(
-            blocks$right_flank[[2]], 0.3,
-            labels = paste0(
-            blocks$right_flank[[2]] - blocks$right_flank[[1]] + 1,
-                " intervals: ",
-                range2kb(
-                    dcr$coords[blocks$right_flank[[1]], "start"],
-                    dcr$coords[blocks$right_flank[[2]], "end"]
-                ),
-                "kb"
-            ),
-            pos = 2,
-            offset = 0.3,
-            cex = 0.9
-        )
+      rect(blocks$right_flank[[1]] - 0.5, 0,
+           blocks$right_flank[[2]], 5,
+           col = "#33333311",
+           border = NA)
+      text(blocks$right_flank[[2]], 0.3,
+           labels = paste0(blocks$right_flank[[2]] - blocks$right_flank[[1]] + 1,
+                           " intervals: ",
+                           range2kb(dcr$coords[blocks$right_flank[[1]], "start"],
+                                    dcr$coords[blocks$right_flank[[2]], "end"]),
+                           "kb"),
+           pos = 2,
+           offset = 0.3,
+           cex = 0.9)
     }
-    legend(
-        "topleft",
-        legend = c("DUP", "DEL", "Unknown"),
-        col = c("#2376B2", "#D43925", "#000000"),
-        pch = 19,
-        bty = "n"
-    )
-    legend(
-        "topright",
-        legend = c("Affected", "Unaffected"),
-        lty = c("solid", "dashed"),
-        bty = "n"
-    )
+
+    legend("topleft",
+           legend = c("DUP", "DEL", "Unknown"),
+           col = c(svtype_color("DUP"), svtype_color("DEL"), "#000000"),
+           pch = 19,
+           bty = "n")
+    legend("topright",
+           legend = c("Affected", "Unaffected"),
+           lty = c("solid", "dashed"),
+           bty = "n")
+}
+
+plot_dcr <- function(x, dcr, outfile, main = "") {
+    png(filename = paste0(outfile, ".png"), width = 647, height = 400)
+    old_par <- par(font.lab = 2, mar = c(4, 4, 4, 2) + 0.1)
+    if (nrow(dcr$coords) == 1) {
+        plot_single_interval(x, dcr, main)
+    } else {
+        plot_mult_interval(x, dcr, main)
+    }
     par(old_par)
     dev.off()
 }
@@ -212,15 +225,13 @@ get_group_dcr <- function(samples,
     bg_dcr_list <- vector(mode = "list", length = length(batch_groups))
     for (i in seq_along(batch_groups)) {
         batch <- names(batch_groups)[[i]]
-        dcr <- tryCatch(
-            get_samples_dcr(expanded_region,
-                            gethash(dcrs, batch),
-                            batch_groups[[i]],
-                            include_bg = TRUE,
-                            squeeze = TRUE,
-                            reduce = TRUE),
-            error = function(cnd) NULL
-        )
+        dcr <- tryCatch(get_samples_dcr(expanded_region,
+                                        gethash(dcrs, batch),
+                                        batch_groups[[i]],
+                                        include_bg = TRUE,
+                                        squeeze = TRUE,
+                                        reduce = TRUE),
+                        error = function(cnd) log_error(conditionMessage(cnd)))
 
         if (is.null(dcr) || nrow(dcr) == 0) {
             next
@@ -264,11 +275,9 @@ get_group_dcr <- function(samples,
 
     bg_samples <- colnames(merged_dcr)[!colnames(merged_dcr) %in% c(coord_cols, samples, "in_flank")]
     fg_samples <- samples[samples %in% colnames(merged_dcr)]
-    list(
-        coords = merged_dcr[, .SD, .SDcols = c(coord_cols, "in_flank")],
-        sample_dcr = merged_dcr[, .SD, .SDcols = fg_samples],
-        bg_dcr = merged_dcr[, .SD, .SDcols = bg_samples]
-    )
+    list(coords = merged_dcr[, .SD, .SDcols = c(coord_cols, "in_flank")],
+         sample_dcr = merged_dcr[, .SD, .SDcols = fg_samples],
+         bg_dcr = merged_dcr[, .SD, .SDcols = bg_samples])
 }
 
 plot_denovo_group <- function(x, dcrs, bins, outdir) {
