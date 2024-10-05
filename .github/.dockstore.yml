@@ -26,3 +26,12 @@ workflows:
         - main
       tags:
         - /.*/
+
+  - name: FixDCR
+    subclass: WDL
+    primaryDescriptorPath: /wdl/FixDCR.wdl
+    filters:
+      branches:
+        - main
+      tags:
+        - /.*/
