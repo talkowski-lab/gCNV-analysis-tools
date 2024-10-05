@@ -1,38 +1,33 @@
-# dCR plotting pipeline
-#
-# Generate dCR plots for possible de novo CNVs or a group of clustered CNVs.
-# Usage: Rscript plot_cnv_evidence.R CALLSET [DENOVO] BINS PED DCRS OUTDIR
-# * CALLSET - If DENOVO is given, the full callset produced by the gCNV
-#             pipeline. Otherwise, the subset of the callset for the variants
-#             to plot
-# * DENOVO  - Optional. de novo calls to plot
-# * BINS    - Genomic bins file used by the gCNV pipeline
-# * PED     - Pedigree file
-# * DCRS    - List of paths, one per line, to the dCR matrices
-# * OUTDIR  - Output directory. Must not exist
+# de novo CNV plotting pipeline
 
-ALPHANUM <- c(LETTERS, letters, as.character(0:9))
+CHILD_COLOR <- "#84A955"
+FATHER_COLOR <-"#965DA7"
+MOTHER_COLOR <- "#BC5D41"
 
-# Parse the command line arguments
-parse_args <- function(argv) {
-    argc <- length(argv)
-    if (argc == 5) {
-        args <- vector(mode = "list", 6)
-        args[[1]] <- argv[[1]]
-        args[3:6] <- argv[2:5]
-    } else {
-        args <- as.list(argv)
-    }
-    names(args) <- c("callset", "denovo", "bins", "pedigree", "dcrs", "outdir")
+usage <- function() {
+'Usage: Rscript plot_cnv_evidence.R DENOVO BINS PED DCRS OUTDIR
 
-    args
+DENOVO   de novo callset
+BINS     Genomic intervals file used by the gCNV pipeline
+PED      Pedigree file
+DCRS     A file with either the paths, one per line, to the dCR matrices or
+         two tab-separated columns with the batch ID in the first column and
+         path to the dCR matrix for that batch in the second column
+OUTDIR   Path to the output directory. The directory must not exist
+'
 }
 
-# Generate n random alphanumeric strings of length k
-random_str <- function(n, k = 7) {
-    replicate(n,
-              paste0(sample(ALPHANUM, k, replace = TRUE), collapse = ""),
-              simplify = TRUE)
+parse_args <- function() {
+    argv <- commandArgs(trailingOnly = TRUE)
+    if (length(argv) != 5) {
+        cat(usage(), sep = "", file = stderr())
+        quit(save = "no", 2)
+    }
+
+    args <- as.list(argv)
+    names(args) <- c("DENOVO", "BINS", "PED", "DCRS", "OUTDIR")
+
+    args
 }
 
 # Create the output directory for the plots. Signal error if it already exists
@@ -47,14 +42,6 @@ setup_outdir <- function(path) {
     }
 
     invisible(path)
-}
-
-# From a data.table of CNV calls, return the largest variant as a gregion
-# object
-get_largest_variant <- function(x) {
-    m <- x[which.max(end - start)]
-
-    gregion(m$chr, m$start, m$end)
 }
 
 # Given a logical vector parallel to the rows of a dCR matrix, indicating
@@ -93,40 +80,56 @@ range2kb <- function(start, end) {
     round((end - start + 1) / 1000, 1)
 }
 
-# Get the plotting colors for CNV types
-svtype_color <- function(x) {
-    if (is.na(x)) {
-      return("#000000")
-    } else if (x == "DEL") {
-      return("#D43925")
-    } else if (x == "DUP") {
-      return("#2376B2")
+# Test if a vector has at least two consecutive non-missing values
+has_consecutive_values <- function(x) {
+    if (length(x) < 2) {
+        return(FALSE)
     }
 
-    "#000000"
+    idx <- which(!is.na(x))
+    if (length(idx) == 0) {
+        return(FALSE)
+    }
+
+    any(idx[-1] - idx[-length(idx)] == 1)
 }
 
-plot_single_interval <- function(x, dcr, main = "") {
-    boxplot(as.double(dcr$bg_dcr[1, ]),
+# Plot the case where the child has only one dCR interval overlapping its SV
+plot_single_interval <- function(x, dcr, main) {
+    dcr_point <- dcr[!is.na(child) & !in_flank, ]
+    boxplot(as.double(dcr_point[, .SD, .SDcols = patterns("^bg_")]),
             horizontal = TRUE,
             outline = FALSE,
             xlab = "Denoised Coverage",
             ylab = "",
             ylim = c(0, 5),
             main = main)
-    for (i in seq_len(nrow(x))) {
-        sample_id <- x[i, ]$sample
-        phen <- x[i, ]$phenotype
-        svtype <- x[i, ]$svtype
-        points(dcr$sample_dcr[1, ..sample_id],
-               1 + runif(1, -0.1, 0.1),
-               pch = if (!is.na(phen) && phen == 2) 15 else 19,
-               cex = 1.5,
-               col = svtype_color(svtype))
+
+    points(dcr_point$child,
+           1 + runif(1, -0.07, 0.07),
+           col = CHILD_COLOR,
+           pch = if (x$phenotype == 2) 15 else 19,
+           cex = 1.5)
+
+    if (!is.na(dcr_point$father)) {
+        points(dcr_point$father,
+               1 + runif(1, -0.07, 0.07),
+               col = FATHER_COLOR,
+               pch = if (x$paternal_phenotype == 2) 15 else 19,
+               cex = 1.5)
     }
+
+    if (!is.na(dcr_point$mother)) {
+        points(dcr_point$mother,
+               1 + runif(1, -0.07, 0.07),
+               col = MOTHER_COLOR,
+               pch = if (x$maternal_phenotype == 2) 15 else 19,
+               cex = 1.5)
+    }
+
     legend("topleft",
-           legend = c("DUP", "DEL", "Unknown"),
-           col = c("#2376B2", "#D43925", "#000000"),
+           legend = c("offspring", "father", "mother"),
+           col = c(CHILD_COLOR, FATHER_COLOR, MOTHER_COLOR),
            pch = 19,
            bty = "n")
     legend("topright",
@@ -135,26 +138,49 @@ plot_single_interval <- function(x, dcr, main = "") {
            bty = "n")
 }
 
-plot_mult_interval <- function(x, dcr, main = "") {
-    blocks <- split_dcr_blocks(dcr$coords$in_flank)
-    matplot(data.matrix(dcr$bg_dcr),
-            type = "l",
+plot_sample_dcr_line <- function(x, color, phenotype) {
+    lty = if (phenotype == 2) "solid" else "dashed"
+    pch = if (phenotype == 2) 15 else 19
+    lines(seq_along(x), x, lwd = 3, lty = lty, col = color)
+
+    idx <- which(!is.na(x))
+    na_after <- idx[-1] - idx[-length(idx)] > 1
+    na_before <- which(na_after) + 1
+    singleton_idx <- sort(intersect(idx[na_after], idx[na_before]))
+    points(singleton_idx, x[singleton_idx], cex = 1, pch = pch, col = color)
+
+    # Handle intervals at the start and end of vector
+    # Only guarantee is that there are at least two intervals because this
+    # function is only called if the child has at least two non-NA, non-flanking
+    # intervals
+    if (!is.na(x[[1]]) && is.na(x[[2]])) {
+        points(1, x[[1]], cex = 1, pch = pch, col = color)
+    }
+    if (!is.na(x[[length(x)]]) && is.na(x[[length(x) - 1]])) {
+        points(length(x), x[[length(x)]], cex = 1, pch = pch, col = color)
+    }
+}
+
+plot_mult_interval <- function(x, dcr, main) {
+    blocks <- split_dcr_blocks(dcr$in_flank)
+    # If there are at least two consecutive intervals with values, then matplot
+    # will be able to plot at least one line and because all the background
+    # samples come from the same batch as the child, if the child has two
+    # consecutive intervals, so will the background samples.
+    child_has_lines <- has_consecutive_values(dcr$child)
+    matplot(data.matrix(dcr[, .SD, .SDcols = patterns("^bg_")]),
+            type = if (child_has_lines) "l" else "p",
             lty = 1,
+            pch = 19,
             ylim = c(0, 5),
             col = "#77777777",
             xlab = "Interval",
             ylab = "Denoised Coverage",
             main = main)
 
-    for (i in seq_len(nrow(x))) {
-        sample_id <- x[i, ]$sample
-        phen <- x[i, ]$phenotype
-        svtype <- x[i, ]$svtype
-        lines(dcr$sample_dcr[[sample_id]],
-              lwd = 3,
-              lty = if (!is.na(phen) && phen == 2) "solid" else "dashed",
-              col = svtype_color(svtype))
-    }
+    plot_sample_dcr_line(dcr$child, CHILD_COLOR, x$phenotype)
+    plot_sample_dcr_line(dcr$father, FATHER_COLOR, x$paternal_phenotype)
+    plot_sample_dcr_line(dcr$mother, MOTHER_COLOR, x$maternal_phenotype)
 
     if (length(blocks$left_flank) > 0) {
         rect(1, 0, blocks$left_flank[[2]] + 0.5, 5, col = "#33333311", border = NA)
@@ -185,20 +211,23 @@ plot_mult_interval <- function(x, dcr, main = "") {
     }
 
     legend("topleft",
-           legend = c("DUP", "DEL", "Unknown"),
-           col = c(svtype_color("DUP"), svtype_color("DEL"), "#000000"),
+           legend = c("Offspring", "Father", "Mother"),
+           col = c(CHILD_COLOR, FATHER_COLOR, MOTHER_COLOR),
            pch = 19,
            bty = "n")
     legend("topright",
            legend = c("Affected", "Unaffected"),
            lty = c("solid", "dashed"),
+           pch = c(15, 19),
            bty = "n")
 }
 
-plot_dcr <- function(x, dcr, outfile, main = "") {
+plot_dcr <- function(x, dcr, outfile) {
     png(filename = paste0(outfile, ".png"), width = 647, height = 400)
+    main <- paste0(x$chr, ":", x$start, "-", x$end, "\n",
+                   x$sample, ";", x$variant_name, ";", x$svtype)
     old_par <- par(font.lab = 2, mar = c(4, 4, 4, 2) + 0.1)
-    if (nrow(dcr$coords) == 1) {
+    if (nrow(dcr[!is.na(child) & !in_flank, ]) == 1) {
         plot_single_interval(x, dcr, main)
     } else {
         plot_mult_interval(x, dcr, main)
@@ -207,183 +236,128 @@ plot_dcr <- function(x, dcr, outfile, main = "") {
     dev.off()
 }
 
-# Get the dCR matrix for a group of samples. Samples that are missing are
-# ignored.
-get_group_dcr <- function(samples,
-                          batches,
-                          dcrs,
-                          region,
-                          bins,
-                          bg = 50,
-                          pad = 0.2) {
-    bg_per_batch <- ceiling(bg / length(unique(batches)))
-    expanded_region <- expand_region_by_bins(region, bins, pad)
+get_trio_dcr <- function(trio,
+                         dcr_paths,
+                         bins,
+                         bg = 50,
+                         pad = 0.2) {
+    sv_region <- gregion(trio$chr, trio$start, trio$end)
+    expanded_region <- expand_region_by_bins(sv_region, bins, pad)
 
+    trio_ids <- c(trio$sample, trio$paternal_id, trio$maternal_id)
+    batches <- c(trio$batch, trio$paternal_batch, trio$maternal_batch)
     coord_cols <- c("chr", "start", "end")
-    batch_groups <- split(samples, batches)
-    dcr_list <- vector(mode = "list", length = length(batch_groups))
-    bg_dcr_list <- vector(mode = "list", length = length(batch_groups))
+
+    batch_groups <- split(trio_ids, batches)
+    trio_dcr <- vector(mode = "list", length = 3)
+    names(trio_dcr) <- c("child", "father", "mother")
+    bg_dcr <- NULL
     for (i in seq_along(batch_groups)) {
         batch <- names(batch_groups)[[i]]
-        dcr <- tryCatch(get_samples_dcr(expanded_region,
-                                        gethash(dcrs, batch),
-                                        batch_groups[[i]],
-                                        include_bg = TRUE,
-                                        squeeze = TRUE,
-                                        reduce = TRUE),
-                        error = function(cnd) log_error(conditionMessage(cnd)))
+        samples <- batch_groups[[i]]
+        dcr <- get_samples_dcr(expanded_region,
+                               gethash(dcr_paths, batch),
+                               batch_groups[[i]],
+                               include_bg = trio$sample %in% samples,
+                               squeeze = TRUE,
+                               reduce = TRUE)
 
-        if (is.null(dcr) || nrow(dcr) == 0) {
-            next
+        if (trio$sample %in% samples) {
+            trio_dcr$child <- as.data.table(dcr[c(coord_cols, trio$sample)])
+            setkey(trio_dcr$child, chr, start, end)
+            setnames(trio_dcr$child, trio$sample, "child")
+            bg_samples <- colnames(dcr)[!colnames(dcr) %in% c(coord_cols, samples)]
+            if (length(bg_samples) == 0) {
+                stop("child batch has no background samples", call. = FALSE)
+            }
+            bg_samples <- sample(bg_samples, min(length(bg_samples), bg))
+            bg_dcr <- as.data.table(dcr[c(coord_cols, bg_samples)])
+            setnames(bg_dcr, bg_samples, paste0("bg_", seq_along(bg_samples)))
+            setkey(bg_dcr, chr, start, end)
         }
 
-        dcr_list[[i]] <- as.data.table(dcr[c(coord_cols, batch_groups[[i]])])
-        setkey(dcr_list[[i]], chr, start, end)
-
-        bg_samples <- colnames(dcr)[!colnames(dcr) %in% c(coord_cols, samples)]
-        if (length(bg_samples) > 0) {
-            bg_samples <- sample(bg_samples, min(length(bg_samples), bg_per_batch))
-            bg_dcr <- dcr[c(coord_cols, bg_samples)]
-            # It is possible that a single sample is in different batches which
-            # creates the problem of duplicate column names when the background
-            # dCR data.frames are joined so we change the column names to be
-            # unique as we don't need the sample IDs anyways.
-            colnames(bg_dcr) <- c(
-                coord_cols, paste0(bg_samples, "_", i, random_str(length(bg_samples)))
-            )
-            bg_dcr_list[[i]] <- as.data.table(bg_dcr)
-            setkey(bg_dcr_list[[i]], chr, start, end)
+        if (trio$paternal_id %in% samples) {
+            trio_dcr$father <- as.data.table(dcr[c(coord_cols, trio$paternal_id)])
+            setkey(trio_dcr$father, chr, start, end)
+            setnames(trio_dcr$father, trio$paternal_id, "father")
         }
-    }
 
-    dcr_list <- Filter(Negate(is.null), dcr_list)
-    bg_dcr_list <- Filter(Negate(is.null), bg_dcr_list)
-
-    if (length(dcr_list) == 0) {
-        return(NULL)
-    }
-
-    merged_dcr <- Reduce(merge, c(dcr_list, bg_dcr_list))
-    setkey(merged_dcr, chr, start)
-
-    if (nrow(merged_dcr) == 0) {
-        return(NULL)
+        if (trio$maternal_id %in% samples) {
+            trio_dcr$mother <- as.data.table(dcr[c(coord_cols, trio$maternal_id)])
+            setkey(trio_dcr$mother, chr, start, end)
+            setnames(trio_dcr$mother, trio$maternal_id, "mother")
+        }
     }
 
     # Assume ranges are disjoint
-    merged_dcr[, in_flank := end < region$start | start > region$end]
+    merged_dcr <- Reduce(\(x, y) merge(x, y, all = TRUE), trio_dcr)
+    merged_dcr <- merge(merged_dcr, bg_dcr, all.x = TRUE)
+    merged_dcr[, in_flank := end < sv_region$start | start > sv_region$end]
 
-    bg_samples <- colnames(merged_dcr)[!colnames(merged_dcr) %in% c(coord_cols, samples, "in_flank")]
-    fg_samples <- samples[samples %in% colnames(merged_dcr)]
-    list(coords = merged_dcr[, .SD, .SDcols = c(coord_cols, "in_flank")],
-         sample_dcr = merged_dcr[, .SD, .SDcols = fg_samples],
-         bg_dcr = merged_dcr[, .SD, .SDcols = bg_samples])
+    merged_dcr
 }
 
-plot_denovo_group <- function(x, dcrs, bins, outdir) {
-    calls <- unique(x, by = "sample")
-    region <- get_largest_variant(calls)
-    dcr <- get_group_dcr(calls$sample, calls$batch, dcrs, region, bins)
+plot_denovo <- function(x, dcr_paths, bins, outdir) {
+    log_info(sprintf("plotting sample '%s' at variant '%s'", x$sample, x$variant))
+    dcr <- tryCatch(
+        get_trio_dcr(x, dcr_paths, bins),
+        error = function(cnd) {
+            log_error(conditionMessage(cnd))
+            NULL
+        })
+
     if (is.null(dcr)) {
-        log_warn(paste0("could not plot de novo '",
-                        x[1, ]$variant_name,
-                        "' from family '",
-                        x[1, ]$family_id, "'"))
+        log_warn("could not make trio dCR matrix")
         return()
     }
 
-    outfile <- file.path(
-        outdir,
-        paste(x[1, ]$family_id, x[1, ]$variant_name, sep = "__")
-    )
-    main <- paste0(
-        to_string(region), "\n",
-        "Family: ", x[1, ]$family_id, " Variant: ", x[1, ]$variant_name
-    )
+    if (nrow(dcr[!in_flank & !is.na(child), ]) == 0) {
+        log_warn("dCR matrix does not have any non-missing intervals")
+        return()
+    }
 
-    plot_dcr(x, dcr, outfile, main = main)
-}
-
-plot_variant_group <- function(x, dcrs, bins, outdir) {
-  region <- get_largest_variant(x)
-  dcr <- get_group_dcr(x$sample, x$batch, dcrs, region, bins)
-  if (is.null(dcr)) {
-      log_warn(paste0("Could not plot variant ", x[1, ]$variant_name))
-      return()
-  }
-
-  outfile <- file.path(
-      outdir,
-      paste(x[1, ]$variant_name, region$chr, region$start, region$end, sep = "__")
-  )
-  main <- paste0(region$chr, ":", region$start, "-", region$end, "\n", x[1, ]$variant_name)
-
-  plot_dcr(x, dcr, outfile, main = main)
+    outfile <- file.path(outdir,
+                         paste(x$sample, x$variant_name, x$svtype, sep = "__"))
+    plot_dcr(x, dcr, outfile)
 }
 
 # Parse command-line arguments ------------------------------------------------
-argv <- commandArgs(trailingOnly = TRUE)
-if (length(argv) != 5 && length(argv) != 6) {
-    stop("Incorrect number of arguments to script", call. = FALSE)
-}
-args <- parse_args(argv)
+args <- parse_args()
 
 suppressPackageStartupMessages(library(gelpers))
+suppressPackageStartupMessages(library(GenomicRanges))
+
 
 set.seed(42)
 
-callset <- read_callset(args$callset)
-pedigree <- read_pedigree(args$pedigree)
-dcrs <- read_dcr_list(args$dcrs)
-is_hg19 <- any(c(as.character(1:22), "X", "Y") %in% callset$chr)
-bins <- read_gcnv_bins(args$bins, reduce = is_hg19)
-setup_outdir(args$outdir)
+# Read inputs -----------------------------------------------------------------
+log_info("reading de novo callset")
+denovo <- read_callset(args$DENOVO)
+denovo[,  `:=`(chr = as.character(chr),
+                start = as.integer(start),
+                end = as.integer(end))]
+is_hg19 <- any(c(as.character(1:22), "X", "Y") %in% denovo$chr)
+log_info("reading bins")
+bins <- read_gcnv_bins(args$BINS, reduce = is_hg19)
+log_info("reading pedigree")
+pedigree <- read_pedigree(args$PED)
+log_info("reading dCR paths")
+dcr_paths <- read_dcr_list(args$DCRS)
+setup_outdir(args$OUTDIR)
 
-# Run de novo plotting workflow ----------------------------------------------
-if (!is.null(args$denovo)) {
-    log_info("Running de novo plotting workflow")
-    batches <- unique(callset[, c("sample", "batch")])
-    callset <- callset[, list(chr, start, end, svtype, variant_name, sample)]
-    denovo <- read_callset(args$denovo)
-    denovo[, family_id := as.character(family_id)]
-    setnames(denovo, "sample", "offspring")
-    denovo <- pedigree[, c("family_id", "sample_id", "phenotype")][denovo, on = "family_id"]
-    denovo <- denovo[, list(family_id, offspring, sample_id, phenotype, svtype, variant_name)]
-    denovo <- callset[denovo, on = c(sample = "sample_id", "svtype", "variant_name"), mult = "first"]
-    denovo[is.na(chr), svtype := NA]
-    denovo <- batches[denovo, on = "sample", mult = "first"]
-    denovo <- denovo[!is.na(batch)]
+# Merge in phenotype ----------------------------------------------------------
+phen <- pedigree[, list(sample = sample_id, phenotype = phenotype)]
+# Just set all missing phenotypes to unaffected
+phen[is.na(phenotype), phenotype := 1]
+setkey(phen, sample)
 
-    # Sometimes there are families in which multiple offspring possess a denovo CNV
-    # and causes there to be fewer family groups than denovo calls.
-    grps <- split(denovo, by = c("family_id", "variant_name"))
-    for (g in grps) {
-        log_info(paste0("Plotting de novo '",
-                        g[1, ]$variant_name,
-                        "' for family '",
-                        g[1, ]$family_id,
-                        "'"))
-        plot_denovo_group(g, dcrs, bins, args$outdir)
-    }
-    log_info("Completed de novo CNV plotting")
-    quit(save = "no")
+denovo <- phen[denovo, on = "sample"]
+denovo <- phen[, list(paternal_id = sample, paternal_phenotype = phenotype)][denovo, on = "paternal_id"]
+denovo <- phen[, list(maternal_id = sample, maternal_phenotype = phenotype)][denovo, on = "maternal_id"]
+
+# Plot de novo calls ----------------------------------------------------------
+log_info("Plotting de novo calls")
+for (i in seq_len(nrow(denovo))) {
+    plot_denovo(as.list(denovo[i, ]), dcr_paths, bins, args$OUTDIR)
 }
-
-# Run variant group plotting workflow ----------------------------------------
-log_info("Running variant plotting workflow")
-pedigree <- pedigree[, list(sample_id, phenotype)]
-setkey(pedigree, sample_id)
-
-setkey(callset, sample)
-callset <- pedigree[callset, on = c(sample_id = "sample"), mult = "first"]
-setnames(callset, "sample_id", "sample")
-setkey(callset, sample, variant_name)
-callset <- unique(callset, by = c("sample", "variant_name"))
-
-# Split callset by variant ID
-var_grps <- split(callset, by = "variant_name")
-for (vg in var_grps) {
-    log_info(paste0("Plotting variant ", vg[1, ]$variant_name))
-    plot_variant_group(vg, dcrs, bins, args$outdir)
-}
-log_info("Completed variant group plotting")
+log_info("Completed de novo CNV plotting")
