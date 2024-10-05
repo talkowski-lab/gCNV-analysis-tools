@@ -46,6 +46,7 @@ task MakeStandardDCR {
     disks: "local-disk ${disk_gb} HDD"
     cpu: 1
     preemptible: 3
+    maxRetries: 1
     docker: runtime_docker
     bootDiskSizeGb: 16
   }
