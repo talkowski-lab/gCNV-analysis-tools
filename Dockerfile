@@ -12,6 +12,7 @@ RUN apt-get update \
     libdeflate-dev \
     libcurl4-openssl-dev \
     libssl-dev \
+    curl \
   && rm -rf /var/lib/apt/lists/*
 
 RUN curl -L -o htslib.tar.bz2 "${HTSLIB_URI}" \
