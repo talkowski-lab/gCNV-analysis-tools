@@ -2,12 +2,11 @@ version 1.0
 
 import "Structs.wdl"
 
-workflow PlotCNVEvidence {
+workflow PlotDeNovoEvidence {
   input {
-    File callset   # Callset produced by the gCNV pipeline or a subset of it
-    File? denovo   # de novo calls
-    File pedigree  # Pedigree for the entire cohort
+    File denovo   # de novo calls
     File intervals # gCNV intervals
+    File pedigree  # Pedigree for the entire cohort
 
     String runtime_docker
 
@@ -20,7 +19,6 @@ workflow PlotCNVEvidence {
 
   call PlotRD {
     input:
-      callset = callset,
       denovo = denovo,
       pedigree = pedigree,
       intervals = intervals,
@@ -41,8 +39,7 @@ workflow PlotCNVEvidence {
 
 task PlotRD {
   input {
-    File callset
-    File? denovo
+    File denovo
     File pedigree
     File intervals
 
@@ -94,8 +91,7 @@ task PlotRD {
     else
       dcrs="${dcr_paths}"
     fi
-    Rscript /opt/gcnv/scripts/plot_cnv_evidence.R \
-      '~{callset}' \
+    Rscript /opt/gcnv/scripts/plot_denovo_evidence.R \
       '~{denovo}' \
       '~{intervals}' \
       '~{pedigree}' \

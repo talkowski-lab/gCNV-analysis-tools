@@ -9,9 +9,9 @@ workflows:
       tags:
         - /.*/
 
-  - name: PlotCNVEvidence
+  - name: PlotDeNovoEvidence
     subclass: WDL
-    primaryDescriptorPath: /wdl/PlotCNVEvidence.wdl
+    primaryDescriptorPath: /wdl/PlotDeNovoEvidence.wdl
     filters:
       branches:
         - main
