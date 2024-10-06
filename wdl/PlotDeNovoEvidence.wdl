@@ -52,9 +52,9 @@ task PlotRD {
     RuntimeAttr? runtime_attr_override
   }
 
-  Float input_size = 1.5 * size(dcr_files, "GB")
+  Float input_size = (1.2 * size(dcr_files, "GB")) + size(denovo, "GB") + size(pedigree, "GB")
   RuntimeAttr runtime_default = object {
-    mem_gb: 4,
+    mem_gb: 2,
     cpu_cores: 1,
     disk_gb: ceil(8.0 + input_size),
     boot_disk_gb: 16,
