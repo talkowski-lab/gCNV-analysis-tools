@@ -6,7 +6,7 @@ ARG HTSLIB_URI="https://github.com/samtools/htslib/releases/download/${HTSLIB_VE
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     git \
-    izlib1g-dev \
+    zlib1g-dev \
     libbz2-dev \
     liblzma-dev \
     libdeflate-dev \
