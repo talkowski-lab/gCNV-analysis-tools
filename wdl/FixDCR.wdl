@@ -37,7 +37,7 @@ task MakeStandardDCR {
     mv '~{dcr}' old.dcr.bed.gz
     bgzip -dc old.dcr.bed.gz \
       | sed -e '1s/CHR/chr/' -e '1s/START/start/' -e '1s/END/end/' \
-      | bzgip > '~{batch_id}.dcr.bed.gz'
+      | bgzip > '~{batch_id}.dcr.bed.gz'
     tabix -s 1 -b 2 -e 3 -c '#' '~{batch_id}.dcr.bed.gz'
   >>>
 
