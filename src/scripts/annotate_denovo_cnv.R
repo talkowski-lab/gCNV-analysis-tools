@@ -1,13 +1,4 @@
 # de novo CNV annotation pipeline
-#
-# Annotate de novo CNVs from a gCNV callset.
-# Usage: Rscript annotate_denovo_cnv.R CALLSET BINS PED DCRS NPROC OUTPUT
-# * CALLSET - Final callset produced by gCNV pipeline
-# * BINS    - Genomic bins file used by the gCNV pipeline
-# * PED     - Pedigree file
-# * DCRS    - Paths to the dCR matrices in a format accepted by gelpers::read_dcr_list()
-# * NPROC   - Number of processors to use
-# * OUTPUT  - Path to the output
 
 DEFAULT_OPTS <- list(recal_freq = TRUE,
                      hq_cols = c("PASS_SAMPLE", "PASS_QS"),
@@ -47,11 +38,28 @@ Options:
 '
 }
 
+#' Write to stderr and exit
 msg_and_exit <- function(msg, status = 1) {
     cat(msg, sep = "", file = stderr())
     quit(save = "no", status)
 }
 
+#' Parse a command-line option requiring an argument
+#'
+#' Three option types are supported:
+#' * short option (e.g. -o <arg>)
+#' * long option (e.g. --opt <arg>)
+#' * long option with '=' (e.g. --opt=<arg>)
+#'
+#' @param x A character vector of all the command-line arguments i.e. as
+#'   returned by `commandArgs(trailingOnly = TRUE)`.
+#' @param m The match object returned by `regexec` from comparing the
+#'   option against the option-specific regular expression.
+#' @param i The index in `x` of the current option.
+#' @returns A list of length two in which the first element is the argument of
+#'   the parsed option and the second is the index of the next element of `x`
+#'   parse. If an option does not provide an argument, the script will exit
+#'   with an error message.
 opt_arg <- function(x, m, i) {
     matches <- regmatches(x[[i]], m)[[1]]
     can_inc <- i + 1 <= length(x)
@@ -238,6 +246,17 @@ dcr_evidence <- function(x, dcr_map) {
     rg
 }
 
+#' Predict the sex of samples from their chrX dCR values
+#'
+#' Prediction of sex is done based on the mean dCR of chrX for each sample.
+#'
+#' @param samples Sample IDs.
+#' @param dcr `NULL` or a `data.table` of the dCR matrix of the samples in
+#'   `samples` subset to the intervals on chromosome X.
+#' @returns A `data.table` giving the mean dCR value of chrX and predicted
+#'   sex of each sample. Samples that cannot be classified will have an
+#'   `NA` for predicted sex. If `dcr` is `NULL`, every sample will be
+#'   assigned an `NA` mean chrX dCR and predicted sex.
 sex_from_dcr <- function(samples, dcr) {
     if (is.null(dcr) || nrow(dcr) == 0) {
         return(data.table(sample = samples, chrX_CN = NA_real_, predicted_sex = NA_integer_))
@@ -257,6 +276,14 @@ sex_from_dcr <- function(samples, dcr) {
     mean_x
 }
 
+#' Predict the sex of samples
+#'
+#' Use chrX dCR values to predict chrX copy number of sample sex.
+#'
+#' @param x A `data.table` of sample and batch IDs.
+#' @param dcr_map A hash map of batch ID to dCR matrix paths.
+#' @param nproc Number of cpus to use.
+#' @returns A `data.table` of all sample chrX copy number and predicted sex.
 predict_sex <- function(x, dcr_map, nproc = 1L) {
     x <- unique(x)
     hg38_region <- gregion("chrX", 1, TABIX_MAX_SEQLEN)
@@ -296,6 +323,18 @@ predict_sex <- function(x, dcr_map, nproc = 1L) {
     rbindlist(sexes)
 }
 
+#' Predict de novo CNVs based on missing overlap between parents and offspring
+#'
+#' Check all CNVs in a child for overlap with a CNV in either parent. The
+#' overlap check is done with both genomic coordinates and bin coordinates. Any
+#' CNV in the child that does not have at least 0.3 reciprocal overlap with a
+#' CNV in a parent is considered a potential de novo.
+#'
+#' @param child `data.table` of calls in the child.
+#' @param father `data.table` of calls in the father.
+#' @param mother `data.table` of calls in the mother.
+#' @param bins `GBins` object of the genomic bins used by gCNV.
+#' @returns `data.table` of putative de novo calls.
 denovo_from_ovp <- function(child, father, mother, bins) {
     gr_c <- df_to_gr(child, cnv = TRUE)
     gr_p <- df_to_gr(father, cnv = TRUE)
@@ -321,6 +360,7 @@ denovo_from_ovp <- function(child, father, mother, bins) {
     dn
 }
 
+#' Add parental batch information to a `data.table` of child calls
 add_parent_batch <- function(child, all_calls) {
     batches <- unique(all_calls[, list(sample, batch)])
     colnames(batches) <- c("paternal_id", "paternal_batch")
@@ -331,6 +371,7 @@ add_parent_batch <- function(child, all_calls) {
     child
 }
 
+#' Recalibrate child CNV frequency to match frequency in parents
 recal_cnv_freq <- function(calls, ped) {
     parent_ids <- unique(c(ped$paternal_id, ped$maternal_id))
     parent_cnvs <- calls[sample %in% parent_ids, ]
@@ -346,6 +387,12 @@ recal_cnv_freq <- function(calls, ped) {
     recal
 }
 
+#' Filter a `data.table` callset to high-quality calls
+#'
+#' @param calls `data.table`.
+#' @param cols character vector of columns names in `calls` that must all be
+#'   `TRUE` for a CNV call to be considered high-quality.
+#' @returns The high-quality calls.
 filter_hq_calls <- function(calls, cols) {
     missing_cols <- cols[!cols %in% colnames(calls)]
     if (length(missing_cols) > 0) {
@@ -363,6 +410,7 @@ filter_hq_calls <- function(calls, cols) {
     calls[eval(parse(text = x))]
 }
 
+#' Autosomal de novo CNV workflow
 autosome_denovo <- function(calls, bins, ped, dcrs, recal_freq, hq_cols, max_freq, nproc) {
     calls <- calls[!grepl("X|Y", chr)]
     ped <- ped[, list(sample_id, paternal_id, maternal_id)]
@@ -445,6 +493,7 @@ autosome_denovo <- function(calls, bins, ped, dcrs, recal_freq, hq_cols, max_fre
     dn
 }
 
+#' chrX de novo CNV workflow
 chrx_denovo <- function(calls, bins, ped, dcrs, recal_freq, hq_cols, max_freq, nproc) {
     # Need the sex column of every sample
     ped <- ped[sample_id %in% unique(calls$sample) & !is.na(sex)]
