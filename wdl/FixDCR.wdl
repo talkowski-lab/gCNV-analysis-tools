@@ -42,7 +42,7 @@ task MakeStandardDCR {
   >>>
 
   runtime {
-    memory: "1 GB"
+    memory: "512 MB"
     disks: "local-disk ${disk_gb} HDD"
     cpu: 1
     preemptible: 3
