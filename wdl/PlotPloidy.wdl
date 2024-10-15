@@ -53,7 +53,7 @@ task SplitIntervalsByContig {
   Int disk_size_gb = ceil(size(intervals, 'GB') * 2) + 8
 
   runtime {
-    memory: '128MB'
+    memory: '128 MB'
     disks: 'local-disk ${disk_size_gb} HDD'
     cpus: 1
     preemptible: 3
@@ -144,7 +144,7 @@ task CombinePlots {
   Int disk_size_gb = ceil(size(flat_plots, 'GB') * 2) + 8
 
   runtime {
-    memory: '128MB'
+    memory: '128 MB'
     disks: 'local-disk ${disk_size_gb} HDD'
     cpus: 1
     preemptible: 3
