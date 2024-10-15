@@ -60,10 +60,11 @@ task PloidyMatrix {
   Array[String] ploidy_contigs = select_first([contigs, default_contigs])
 
   Float input_size = size(dcr_files, 'GB') + size(dcr_indicies, 'GB') + size(callset, 'GB')
+  Int disk_size_gb = ceil(input_size) + 8
   RuntimeAttr runtime_default = object {
     mem_gb: ceil(length(dcr_files) / 2.0),
     cpu_cores: 1,
-    disk_gb: ceil(8.0 + input_size),
+    disk_gb: disk_size_gb,
     boot_disk_gb: 16,
     preemptible_tries: 3,
     max_retries: 0
