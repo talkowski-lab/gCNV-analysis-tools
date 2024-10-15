@@ -1,6 +1,6 @@
 version 1.0
 
-import "Structs.wdl"
+import 'Structs.wdl'
 
 workflow AnnotateDeNovo {
   input {
@@ -71,9 +71,9 @@ task DeNovo {
     RuntimeAttr? runtime_attr_override
   }
 
-  Float input_size = size(dcr_files, "GB") + size(dcr_indicies, "GB") + size(callset, "GB") +
-    size(pedigree, "GB") + size(intervals, "GB")
-  Float output_size = size(callset, "GB")
+  Float input_size = size(dcr_files, 'GB') + size(dcr_indicies, 'GB') + size(callset, 'GB') +
+    size(pedigree, 'GB') + size(intervals, 'GB')
+  Float output_size = size(callset, 'GB')
   RuntimeAttr runtime_default = object {
     mem_gb: 4,
     cpu_cores: 4,
@@ -90,8 +90,8 @@ task DeNovo {
   Boolean make_dcr_map = length(batch_ids_arr) > 0
 
   runtime {
-    memory: "${select_first([runtime_attr.mem_gb, runtime_default.mem_gb])} GB"
-    disks: "local-disk ${select_first([runtime_attr.disk_gb, runtime_default.disk_gb])} HDD"
+    memory: '${select_first([runtime_attr.mem_gb, runtime_default.mem_gb])} GB'
+    disks: 'local-disk ${select_first([runtime_attr.disk_gb, runtime_default.disk_gb])} HDD'
     cpu: cpus
     preemptible: select_first([runtime_attr.preemptible_tries, runtime_default.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, runtime_default.max_retries])
@@ -113,9 +113,9 @@ task DeNovo {
       dcrs="${dcr_paths}"
     fi
     Rscript /opt/gcnv/scripts/annotate_denovo_cnv.R \
-      ~{if select_first([recal_freq, true]) then "" else "--no-recal-freq"} \
-      ~{if defined(hq_cols) then "--hq-cols ~{hq_cols}" else ""} \
-      ~{if defined(max_freq) then "--max-freq ~{max_freq}" else ""} \
+      ~{if select_first([recal_freq, true]) then '' else '--no-recal-freq'} \
+      ~{if defined(hq_cols) then '--hq-cols ~{hq_cols}' else ''} \
+      ~{if defined(max_freq) then '--max-freq ~{max_freq}' else ''} \
       --cpus ~{cpus} \
       '~{callset}' \
       '~{intervals}' \
@@ -126,6 +126,6 @@ task DeNovo {
   >>>
 
   output {
-    File denovo_annotated = "denovo_annotated_calls.tsv.gz"
+    File denovo_annotated = 'denovo_annotated_calls.tsv.gz'
   }
 }

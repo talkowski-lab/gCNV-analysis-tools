@@ -1,6 +1,6 @@
 version 1.0
 
-import "Structs.wdl"
+import 'Structs.wdl'
 
 workflow PlotDeNovoEvidence {
   input {
@@ -52,7 +52,7 @@ task PlotRD {
     RuntimeAttr? runtime_attr_override
   }
 
-  Float input_size = (1.2 * size(dcr_files, "GB")) + size(denovo, "GB") + size(pedigree, "GB")
+  Float input_size = (1.2 * size(dcr_files, 'GB')) + size(denovo, 'GB') + size(pedigree, 'GB')
   RuntimeAttr runtime_default = object {
     mem_gb: 2,
     cpu_cores: 1,
@@ -69,8 +69,8 @@ task PlotRD {
   Boolean make_dcr_map = length(batch_ids_arr) > 0
 
   runtime {
-    memory: "${select_first([runtime_attr.mem_gb, runtime_default.mem_gb])} GB"
-    disks: "local-disk ${select_first([runtime_attr.disk_gb, runtime_default.disk_gb])} HDD"
+    memory: '${select_first([runtime_attr.mem_gb, runtime_default.mem_gb])} GB'
+    disks: 'local-disk ${select_first([runtime_attr.disk_gb, runtime_default.disk_gb])} HDD'
     cpu: cpus
     preemptible: select_first([runtime_attr.preemptible_tries, runtime_default.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, runtime_default.max_retries])
@@ -101,6 +101,6 @@ task PlotRD {
   >>>
 
   output {
-    File plots = "rd_plots.tar.gz"
+    File plots = 'rd_plots.tar.gz'
   }
 }

@@ -27,7 +27,7 @@ task MakeStandardDCR {
     String runtime_docker
   }
 
-  Int disk_gb = ceil(size(dcr, "GB") * 2) + 8
+  Int disk_gb = ceil(size(dcr, 'GB') * 2) + 8
 
   command <<<
     set -o errexit
@@ -42,8 +42,8 @@ task MakeStandardDCR {
   >>>
 
   runtime {
-    memory: "512 MB"
-    disks: "local-disk ${disk_gb} HDD"
+    memory: '512 MB'
+    disks: 'local-disk ${disk_gb} HDD'
     cpu: 1
     preemptible: 3
     maxRetries: 1

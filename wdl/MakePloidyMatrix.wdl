@@ -1,6 +1,6 @@
 version 1.0
 
-import "Structs.wdl"
+import 'Structs.wdl'
 
 workflow MakePloidyMatrix {
   input {
@@ -53,13 +53,13 @@ task PloidyMatrix {
   }
 
   Array[String] default_contigs = [
-    "chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9",
-    "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17",
-    "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY"
+    'chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6', 'chr7', 'chr8', 'chr9',
+    'chr10', 'chr11', 'chr12', 'chr13', 'chr14', 'chr15', 'chr16', 'chr17',
+    'chr18', 'chr19', 'chr20', 'chr21', 'chr22', 'chrX', 'chrY'
   ]
   Array[String] ploidy_contigs = select_first([contigs, default_contigs])
 
-  Float input_size = size(dcr_files, "GB") + size(dcr_indicies, "GB") + size(callset, "GB")
+  Float input_size = size(dcr_files, 'GB') + size(dcr_indicies, 'GB') + size(callset, 'GB')
   RuntimeAttr runtime_default = object {
     mem_gb: ceil(length(dcr_files) / 2.0),
     cpu_cores: 1,
@@ -74,8 +74,8 @@ task PloidyMatrix {
   Boolean make_dcr_map = length(batch_ids_arr) > 0
 
   runtime {
-    memory: "${select_first([runtime_attr.mem_gb, runtime_default.mem_gb])} GB"
-    disks: "local-disk ${select_first([runtime_attr.disk_gb, runtime_default.disk_gb])} HDD"
+    memory: '${select_first([runtime_attr.mem_gb, runtime_default.mem_gb])} GB'
+    disks: 'local-disk ${select_first([runtime_attr.disk_gb, runtime_default.disk_gb])} HDD'
     cpu: select_first([runtime_attr.cpu_cores, runtime_default.cpu_cores])
     preemptible: select_first([runtime_attr.preemptible_tries, runtime_default.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, runtime_default.max_retries])
@@ -105,6 +105,6 @@ task PloidyMatrix {
   >>>
 
   output {
-    File ploidy_matrix = "ploidy_matrix.tsv.gz"
+    File ploidy_matrix = 'ploidy_matrix.tsv.gz'
   }
 }
