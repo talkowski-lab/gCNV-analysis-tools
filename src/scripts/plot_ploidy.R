@@ -151,6 +151,7 @@ args <- parse_args()
 
 suppressPackageStartupMessages(library(gelpers))
 suppressPackageStartupMessages(library(GenomicRanges))
+suppressPackageStartupMessages(library(parallel))
 
 log_info("reading dCR paths")
 dcrs <- read_dcr_list(args$DCRS)
