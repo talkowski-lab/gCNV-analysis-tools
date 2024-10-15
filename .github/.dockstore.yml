@@ -35,3 +35,12 @@ workflows:
         - main
       tags:
         - /.*/
+
+  - name: PlotPloidy
+    subclass: WDL
+    primaryDescriptorPath: /wdl/PlotPloidy.wdl
+    filters:
+      branches:
+        - main
+      tags:
+        - /.*/
