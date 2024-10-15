@@ -28,6 +28,7 @@ workflow PlotPloidy {
         dcr_files = dcr_files,
         dcr_indicies  = dcr_indicies,
         batch_ids = batch_ids,
+        runtime_docker = runtime_docker,
         runtime_attr_override = runtime_attr_override
     }
   }
