@@ -172,7 +172,7 @@ setup_outdir(args$OUTDIR)
 
 dcr_paths_list <- all_dcr_paths(dcrs)
 
-nworkers <- ncpus() - 1L
+nworkers <- max(ncpus() - 1L, 1L)
 
 ploidy <- mcmapply(
     chr_dcr,
