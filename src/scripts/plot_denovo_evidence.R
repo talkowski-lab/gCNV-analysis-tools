@@ -144,9 +144,10 @@ plot_sample_dcr_line <- function(x, color, phenotype) {
     lines(seq_along(x), x, lwd = 3, lty = lty, col = color)
 
     idx <- which(!is.na(x))
-    na_after <- idx[-1] - idx[-length(idx)] > 1
-    na_before <- which(na_after) + 1
-    singleton_idx <- sort(intersect(idx[na_after], idx[na_before]))
+    na_idx <- which(is.na(x))
+    na_after <- idx[(idx + 1) %in% na_idx]
+    na_before <- idx[(idx - 1) %in% na_idx]
+    singleton_idx <- sort(intersect(na_after, na_before))
     points(singleton_idx, x[singleton_idx], cex = 1, pch = pch, col = color)
 
     # Handle intervals at the start and end of vector
