@@ -177,6 +177,7 @@ plot_mult_interval <- function(x, dcr, main) {
             col = "#77777777",
             xlab = "Interval",
             ylab = "Denoised Coverage",
+            xaxt = "n",
             main = main)
 
     plot_sample_dcr_line(dcr$child, CHILD_COLOR, x$phenotype)
@@ -210,6 +211,10 @@ plot_mult_interval <- function(x, dcr, main) {
            offset = 0.3,
            cex = 0.9)
     }
+
+    xticks <- axTicks(1)
+    xticks <- xticks[trunc(xticks) == xticks]
+    axis(1, at = xticks, labels = sprintf("%d", xticks))
 
     legend("topleft",
            legend = c("Offspring", "Father", "Mother"),
