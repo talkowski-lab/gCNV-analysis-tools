@@ -128,7 +128,7 @@ plot_single_interval <- function(x, dcr, main) {
     }
 
     legend("topleft",
-           legend = c("offspring", "father", "mother"),
+           legend = c("Offspring", "Father", "Mother"),
            col = c(CHILD_COLOR, FATHER_COLOR, MOTHER_COLOR),
            pch = 19,
            bty = "n")
