@@ -106,14 +106,14 @@ plot_single_interval <- function(x, dcr, main) {
             main = main)
 
     points(dcr_point$child,
-           1 + runif(1, -0.07, 0.07),
+           1 + runif(1, -0.1, 0.1),
            col = CHILD_COLOR,
            pch = if (x$phenotype == 2) 15 else 19,
            cex = 1.5)
 
     if (!is.na(dcr_point$father)) {
         points(dcr_point$father,
-               1 + runif(1, -0.07, 0.07),
+               1 + runif(1, -0.1, 0.1),
                col = FATHER_COLOR,
                pch = if (x$paternal_phenotype == 2) 15 else 19,
                cex = 1.5)
@@ -121,7 +121,7 @@ plot_single_interval <- function(x, dcr, main) {
 
     if (!is.na(dcr_point$mother)) {
         points(dcr_point$mother,
-               1 + runif(1, -0.07, 0.07),
+               1 + runif(1, -0.1, 0.1),
                col = MOTHER_COLOR,
                pch = if (x$maternal_phenotype == 2) 15 else 19,
                cex = 1.5)
