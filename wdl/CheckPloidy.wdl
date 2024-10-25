@@ -1,7 +1,7 @@
 version 1.0
 
 import "Structs.wdl"
-import 'MakeSampleBatchMap.wdl' as msbm
+import "MakeSampleBatchMap.wdl" as msbm
 
 workflow CheckPloidy {
   input {
