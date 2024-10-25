@@ -18,15 +18,6 @@ workflows:
       tags:
         - /.*/
 
-  - name: MakePloidyMatrix
-    subclass: WDL
-    primaryDescriptorPath: /wdl/MakePloidyMatrix.wdl
-    filters:
-      branches:
-        - main
-      tags:
-        - /.*/
-
   - name: FixDCR
     subclass: WDL
     primaryDescriptorPath: /wdl/FixDCR.wdl
@@ -36,9 +27,9 @@ workflows:
       tags:
         - /.*/
 
-  - name: PlotPloidy
+  - name: CheckPloidy
     subclass: WDL
-    primaryDescriptorPath: /wdl/PlotPloidy.wdl
+    primaryDescriptorPath: /wdl/CheckPloidy.wdl
     filters:
       branches:
         - main
