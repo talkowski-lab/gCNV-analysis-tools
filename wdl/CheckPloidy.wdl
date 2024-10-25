@@ -6,7 +6,7 @@ import "MakeSampleBatchMap.wdl" as msbm
 workflow CheckPloidy {
   input {
     # MakeSampleBatchMap ------------------------------------------------------
-    Array[Array[String]] sample_ids
+    Array[Array[Array[String]]] sample_ids
     Array[String] sample_set_ids
     String? sample_set_id_trim_regex
 
