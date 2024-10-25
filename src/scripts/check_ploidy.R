@@ -299,7 +299,7 @@ if (length(ploidies) > 1) {
 } else {
     ploidy_matrix <- ploidies[[1]]
 }
-ploidy_matrix[, contigs := list(.SD, \(x) round(x, 2)), .SDcols = contigs]
+ploidy_matrix[, ..contigs := lapply(.SD, \(x) round(x, 2)), .SDcols = contigs]
 fwrite(ploidy_matrix,
        file.path(outdir, "ploidy_matrix.tsv"),
        sep = "\t",
