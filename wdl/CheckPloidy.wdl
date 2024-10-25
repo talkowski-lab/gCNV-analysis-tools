@@ -6,8 +6,8 @@ import "MakeSampleBatchMap.wdl" as msbm
 workflow CheckPloidy {
   input {
     # MakeSampleBatchMap ------------------------------------------------------
-    Array[String] sample_ids
     Array[String] sample_set_ids
+    File callset
     String? sample_set_id_trim_regex
 
     # CheckContigsPloidy -------------------------------------------------------------
@@ -35,8 +35,8 @@ workflow CheckPloidy {
 
   call msbm.MakeSampleBatchMap {
     input:
-      sample_ids = sample_ids,
       sample_set_ids = sample_set_ids,
+      callset = callset,
       runtime_docker = runtime_docker,
       sample_set_id_trim_regex = sample_set_id_trim_regex
   }

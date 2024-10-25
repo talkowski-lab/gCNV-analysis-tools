@@ -2,7 +2,7 @@ version 1.0
 
 workflow MakeSampleBatchMap {
   input {
-    Array[String] sample_ids
+    File callset
     Array[String] sample_set_ids
     String runtime_docker
 
@@ -18,9 +18,8 @@ workflow MakeSampleBatchMap {
 
   call MakeMap {
     input:
-      sample_ids = sample_ids,
-      batch_ids = TrimSampleSetIDs.trimmed_ids,
-      runtime_docker = runtime_docker,
+      callset = callset,
+      runtime_docker = runtime_docker
   }
 
   output {
@@ -59,16 +58,15 @@ task TrimSampleSetIDs {
 
 task MakeMap {
   input {
-    Array[String] sample_ids
-    Array[String] batch_ids
+    File callset
     String runtime_docker
   }
 
-  Array[Pair[String, String]] batch_map = zip(batch_ids, sample_ids)
+  Int disk_size_gb = ceil(size(callset, 'GB')) + 8
 
   runtime {
     memory: '1 GB'
-    disks: 'local-disk 16 HDD'
+    disks: 'local-disk ${disk_size_gb} HDD'
     cpus: 1
     preemptible: 3
     maxRetries: 1
@@ -77,9 +75,16 @@ task MakeMap {
   }
 
   command <<<
-    cat '~{write_json(batch_map)}' \
-     | jq '.[] | .left as $a | .right | map([$a, .]) | .[] | @tsv' \
-     > sample2batch_map.tsv
+    make_table() {
+      awk -F'\t' 'NR==1{for(i=1;i<=NF;++i){a[$i]=i}} NR>1{print
+      $(a["batch"])"\t"$(a["sample"])}' - | LC_ALL=C sort -u
+    }
+
+    if [[ '~{callset}' = *.gz ]]; then
+      gzip -cd '~{callset}' | make_table > sample2batch_map.tsv
+    else
+      cat '~{callset}' | make_table > sample2batch_map.tsv
+    fi
   >>>
 
   output {
