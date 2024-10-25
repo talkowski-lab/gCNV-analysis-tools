@@ -69,7 +69,7 @@ workflow CheckPloidy {
 task CheckContigsPloidy {
   input {
     File sample_batch_map
-    Array[File] batch_ids
+    Array[String] batch_ids
     Array[File] dcr_files
     Array[File] dcr_indicies
     Array[String] contigs
