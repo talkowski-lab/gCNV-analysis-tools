@@ -76,8 +76,7 @@ task MakeMap {
 
   command <<<
     make_table() {
-      awk -F'\t' 'NR==1{for(i=1;i<=NF;++i){a[$i]=i}} NR>1{print
-      $(a["batch"])"\t"$(a["sample"])}' - | LC_ALL=C sort -u
+      awk -F'\t' 'NR==1{for(i=1;i<=NF;++i){a[$i]=i}} NR>1{print $(a["batch"])"\t"$(a["sample"])}' - | LC_ALL=C sort -u
     }
 
     if [[ '~{callset}' = *.gz ]]; then
