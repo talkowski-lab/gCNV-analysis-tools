@@ -1,7 +1,7 @@
 version 1.0
 
 import 'Structs.wdl'
-import 'MakeSampleBatchMap.wdl'
+import 'MakeSampleBatchMap.wdl' as msbm
 
 workflow CheckPloidy {
   input {
@@ -19,21 +19,21 @@ workflow CheckPloidy {
     String runtime_docker
   }
 
-  if (is_hg19) {
-    Array[String] default_contigs = [
-      '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13',
-      '14', '15', '16', '17', '18', '19', '20', '21', '22'
-    ]
-  } else {
-    Array[String] default_contigs = [
-      'chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6', 'chr7', 'chr8', 'chr9',
-      'chr10', 'chr11', 'chr12', 'chr13', 'chr14', 'chr15', 'chr16', 'chr17',
-      'chr18', 'chr19', 'chr20', 'chr21', 'chr22'
-    ]
-  }
+  Array[String] hg38_contigs = [
+    'chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6', 'chr7', 'chr8', 'chr9',
+    'chr10', 'chr11', 'chr12', 'chr13', 'chr14', 'chr15', 'chr16', 'chr17',
+    'chr18', 'chr19', 'chr20', 'chr21', 'chr22'
+  ]
+  Array[String] hg19_contigs = [
+    '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13',
+    '14', '15', '16', '17', '18', '19', '20', '21', '22'
+  ]
+  Boolean hg19 = select_first([is_hg19, false])
+
+  Array[String] default_contigs = if hg19 then hg19_contigs else hg38_contigs
   Array[String] ploidy_contigs = select_first([contigs, default_contigs])
 
-  call MakeSampleBatchMap {
+  call msbm.MakeSampleBatchMap {
     input:
       sample_ids = sample_ids,
       sample_set_ids = sample_set_ids,
@@ -55,7 +55,8 @@ workflow CheckPloidy {
 
   call MergePloidy {
     input:
-      Array[File] ploidy_tars = CheckContigsPloidy.ploidy
+      ploidy_tars = CheckContigsPloidy.ploidy,
+      runtime_docker = runtime_docker
   }
 
   output {
@@ -80,7 +81,7 @@ task CheckContigsPloidy {
   Float input_size = size(dcr_files, 'GB') +
     size(dcr_indicies, 'GB') +
     size(sample_batch_map, 'GB')
-  Float output_size = length(read_lines(sample_batch_map)) * length(contigs) * 1.6e-8
+  Float output_size = length(read_lines(sample_batch_map)) * length(contigs) * 0.000000016
   Int disk_size_gb = ceil(input_size) + ceil(output_size) + 8
 
   RuntimeAttr runtime_default = object {
@@ -113,7 +114,7 @@ task CheckContigsPloidy {
     paste -d '\t' '~{write_lines(batch_ids)}' "${dcr_paths}" > dcrs.tsv
 
     Rscript /opt/gcnv/scripts/check_ploidy.R \
-      '~{write_lines(sample_batch_map)}' \
+      '~{sample_batch_map}' \
       '~{write_lines(contigs)}' \
       dcrs.tsv \
       ploidy
@@ -128,6 +129,7 @@ task CheckContigsPloidy {
 task MergePloidy {
   input {
     Array[File] ploidy_tars
+    String runtime_docker
     RuntimeAttr? runtime_attr_override
   }
 
