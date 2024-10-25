@@ -13,7 +13,6 @@ RUN apt-get update \
     libcurl4-openssl-dev \
     libssl-dev \
     curl \
-    jq \
   && rm -rf /var/lib/apt/lists/*
 
 RUN curl -L -o htslib.tar.bz2 "${HTSLIB_URI}" \
