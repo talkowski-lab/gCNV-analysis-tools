@@ -2,7 +2,7 @@ version 1.0
 
 workflow MakeSampleBatchMap {
   input {
-    Array[Array[Array[String]]] sample_ids
+    Array[String] sample_ids
     Array[String] sample_set_ids
     String runtime_docker
 
@@ -59,12 +59,12 @@ task TrimSampleSetIDs {
 
 task MakeMap {
   input {
-    Array[Array[Array[String]]] sample_ids
+    Array[String] sample_ids
     Array[String] batch_ids
     String runtime_docker
   }
 
-  Array[Pair[String, Array[String]]] batch_map = zip(batch_ids, flatten(sample_ids))
+  Array[Pair[String, String]] batch_map = zip(batch_ids, sample_ids)
 
   runtime {
     memory: '1 GB'
