@@ -167,10 +167,10 @@ task MergePloidy {
     printf 'sample\tchr\tmean_dCR\n' > aneuploidies.tsv
     i=0
     while read -r f; do
-      tar --extract --file "${f}" '*.png'
-      { tar --extract --to-stdout --file "${f}" '*aneuploidies.tsv' 2>/dev/null || true; } \
+      tar --extract --file "${f}" --wildcards '*.png'
+      { tar --extract --to-stdout --file "${f}" --wildcards '*aneuploidies.tsv' 2>/dev/null || true; } \
         | awk 'NR > 1' >> aneuploidies.tsv
-      tar --extract --to-stdout --file "${f}" '*ploidy_matrix.tsv' > "matricies/$(( i++ ))-ploidy.tsv"
+      tar --extract --to-stdout --file "${f}" 'ploidy/ploidy_matrix.tsv' > "matricies/$(( i++ ))-ploidy.tsv"
     done < '~{write_lines(ploidy_tars)}'
 
     Rscript /opt/gcnv/scripts/merge_ploidy_matrices.R matrices ploidy_matrix.tsv
