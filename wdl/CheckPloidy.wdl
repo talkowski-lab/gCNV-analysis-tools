@@ -168,7 +168,7 @@ task MergePloidy {
     i=0
     while read -r f; do
       tar --extract --file "${f}" --wildcards '*.png'
-      { tar --extract --to-stdout --file "${f}" --wildcards '*aneuploidies.tsv' 2>/dev/null || true; } \
+      { tar --extract --to-stdout --file "${f}"  'ploidy/aneuploidies/aneuploidies.tsv' 2>/dev/null || true; } \
         | awk 'NR > 1' >> aneuploidies.tsv
       tar --extract --to-stdout --file "${f}" 'ploidy/ploidy_matrix.tsv' > "matricies/$(( i++ ))-ploidy.tsv"
     done < '~{write_lines(ploidy_tars)}'
