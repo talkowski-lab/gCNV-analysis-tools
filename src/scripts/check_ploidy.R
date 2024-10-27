@@ -316,3 +316,4 @@ if (length(aneuploidies) > 0) {
 }
 
 done <- TRUE
+log_info("done")
