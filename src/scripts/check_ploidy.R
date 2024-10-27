@@ -305,7 +305,9 @@ fwrite(ploidy_matrix,
 
 aneuploidies <- Filter(Negate(is.null), aneuploidies)
 if (length(aneuploidies) > 0) {
-    fwrite(rbindlist(aneuploidies),
+    aneuploidies <- rbindlist(aneuploidies)
+    aneuploidies[, mean_dCR := round(mean_dCR, 3)]
+    fwrite(aneuploidies,
            file.path(aneuploidies_outdir, "aneuploidies.tsv"),
            quote = FALSE,
            sep = "\t")
