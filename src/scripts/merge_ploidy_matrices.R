@@ -3,7 +3,7 @@ suppressPackageStartupMessages(library(data.table))
 matrix_dir <- commandArgs(trailingOnly = TRUE)[[1]]
 output <- commandArgs(trailingOnly = TRUE)[[2]]
 
-message(sprintf("searching for matrices in %s", matrix_dir))
+message(sprintf("searching for matrices in '%s'", matrix_dir))
 mat_paths <- list.files(matrix_dir, pattern = 'ploidy.tsv$', full.names = TRUE)
 if (length(mat_paths) == 0) {
     stop("no ploidy matricies found")
