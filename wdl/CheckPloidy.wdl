@@ -170,8 +170,8 @@ task MergePloidy {
       tar --extract --file "${f}" --wildcards '*.png'
       { tar --extract --to-stdout --file "${f}"  'ploidy/aneuploidies/aneuploidies.tsv' 2>/dev/null || true; } \
         | awk 'NR > 1' >> aneuploidies.tsv
-      echo "matrices/$(( i++ ))-ploidy.tsv"
       tar --extract --to-stdout --file "${f}" 'ploidy/ploidy_matrix.tsv' > "matrices/${i}-ploidy.tsv"
+      i=$(( i + 1 ))
     done < '~{write_lines(ploidy_tars)}'
 
     Rscript /opt/gcnv/scripts/merge_ploidy_matrices.R matrices ploidy_matrix.tsv
