@@ -189,7 +189,8 @@ DCR_EVIDENCE <- data.table(M = NA_real_,
                            MM = NA_real_,
                            MD = NA_real_,
                            bins_fail = NA_integer_,
-                           bins = NA_integer_)
+                           bins = NA_integer_,
+                           miss_parents = FALSE)
 
 format_sample_ids <- function(x) {
     is_long <- nchar(x) > 47L
@@ -202,22 +203,24 @@ format_sample_ids <- function(x) {
 # Compute the M, MF, MM, etc. table for a trio
 dcr_evidence <- function(x, dcr_map) {
     region <- gregion(x$chr, x$start, x$end)
-    trio_dcr <- tryCatch({
-        get_trio_dcr(region,
-                     c(x$sample, x$paternal_id, x$maternal_id),
-                     c(x$batch, x$paternal_batch, x$maternal_batch),
-                     dcr_map,
-                     include_bg = TRUE,
-                     keep_all_ranges = TRUE,
-                     squeeze = TRUE,
-                     reduce = TRUE)
-
-    },
-    error = function(cnd) NULL)
+    trio_dcr <- get_trio_dcr(region,
+                             c(x$sample, x$paternal_id, x$maternal_id),
+                             c(x$batch, x$paternal_batch, x$maternal_batch),
+                             dcr_map,
+                             include_bg = TRUE,
+                             keep_all_ranges = TRUE,
+                             squeeze = TRUE,
+                             reduce = TRUE)
+    if (nrow(trio_dcr) == 0 || all(is.na(trio_dcr[[x$sample]]))) {
+        stop(sprintf("CNV in '%s' at '%d' does not have supporting dCR",
+                     x$sample,
+                     to_string(region)))
+    }
 
     is_chrx <- grepl("X", x$chr, fixed = TRUE)
     default <- DCR_EVIDENCE
-    if (is.null(trio_dcr) || nrow(trio_dcr) == 0) {
+    if (all(is.na(trio_dcr[[x$paternal_id]])) || all(is.na(trio_dcr[[x$maternal_id]]))) {
+        default$miss_parents <- TRUE
         return(default)
     }
 
@@ -240,7 +243,8 @@ dcr_evidence <- function(x, dcr_map) {
         MM = means[[3]],
         MD = md,
         bins_fail = mads_fail,
-        bins = length(mads)
+        bins = length(mads),
+        miss_parents = FALSE
     )
 
     rg
@@ -465,11 +469,10 @@ autosome_denovo <- function(calls, bins, ped, dcrs, recal_freq, hq_cols, max_fre
     log_info("regenotyping")
     rg <- cbind(rg, dn[, list(CN, chr, inheritance, svtype)])
 
-    rg[is.na(MF) | is.na(MM), inheritance := "fail_miss_parents"]
+    rg[miss_parents == TRUE, inheritance := "fail_miss_parents"]
     rg[abs(M - CN) > 0.175 & CN <= 3, inheritance := "fail_M"]
     rg[MD < 0.7, inheritance := "fail_MD"]
     rg[abs(M - CN) > 0.175 & CN <= 3 & MD < 0.7, inheritance := "fail_M_MD"]
-    rg[bins_fail / bins >= 0.5 & bins < 100, inheritance := "fail_bad_bins"]
     rg[CN > 2 & inheritance == "denovo" & (MF > 2.5 | MM > 2.5), inheritance := "inherited"]
     rg[CN < 2 & inheritance == "denovo" & (MF < 1.5 | MM < 1.5), inheritance := "inherited"]
 
@@ -487,6 +490,7 @@ autosome_denovo <- function(calls, bins, ped, dcrs, recal_freq, hq_cols, max_fre
     rg[MM < mos_del_thresh, inheritance := "mosaic_mother"]
     rg[MF > mos_dup_thresh & MM > mos_dup_thresh, inheritance := "mosaic_both"]
     rg[MF < mos_del_thresh & MM < mos_del_thresh, inheritance := "mosaic_both"]
+    rg[bins_fail / bins >= 0.5 & bins < 100, inheritance := "fail_bad_bins"]
 
     dn[, inheritance := rg$inheritance]
 
@@ -599,9 +603,8 @@ chrx_denovo <- function(calls, bins, ped, dcrs, recal_freq, hq_cols, max_freq, n
     rg <- pass_sex[, list(maternal_id = sample, maternal_sex = sex)][rg, on = "maternal_id"]
 
     # Check sex of parents ----------------------------------------------------
-    rg[is.na(MF) | is.na(MM), inheritance := "fail_miss_parents"]
+    rg[miss_parents == TRUE, inheritance := "fail_miss_parents"]
     rg[paternal_sex != 1 | maternal_sex != 2, inheritance := "fail_parental_sex"]
-    rg[is.na(M), inheritance := "fail_miss_child"]
 
     # Check offspring is consistent with SV type and sex ----------------------
     # sex  svtype         expected_M
