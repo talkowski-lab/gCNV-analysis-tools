@@ -78,14 +78,17 @@ task CheckContigsPloidy {
     RuntimeAttr? runtime_attr_override
   }
 
+  Int num_samples = length(read_lines(sample_batch_map))
   Float input_size = size(dcr_files, 'GB') +
     size(dcr_indicies, 'GB') +
     size(sample_batch_map, 'GB')
-  Float output_size = length(read_lines(sample_batch_map)) * length(contigs) * 0.000000016
+  Float output_size = num_samples * length(contigs) * 0.000000016
   Int disk_size_gb = ceil(input_size) + ceil(output_size) + 8
 
+  Float mem_gb = (ceil(num_samples / 1000) * 1.0) + 1.0
+
   RuntimeAttr runtime_default = object {
-    mem_gb: 4,
+    mem_gb: mem_gb,
     cpu_cores: 1,
     disk_gb: disk_size_gb,
     boot_disk_gb: 16,
