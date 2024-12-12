@@ -54,7 +54,7 @@ cleanup <- function(e) {
     if (!is.null(ap_outdir) && dir.exists(ap_outdir)) {
         ap_files <- list.files(ap_outdir)
         if (length(ap_files) == 0) {
-            unink(ap_outdir, recursive = TRUE)
+            unlink(ap_outdir, recursive = TRUE)
         }
     }
 
