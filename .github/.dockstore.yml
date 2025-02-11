@@ -35,3 +35,12 @@ workflows:
         - main
       tags:
         - /.*/
+
+  - name: CheckSex
+    subclass: WDL
+    primaryDescriptorPath: /wdl/CheckSex.wdl
+    filters:
+      branches:
+        - main
+      tags:
+        - /.*/
