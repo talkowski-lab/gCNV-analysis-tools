@@ -5,7 +5,7 @@ FATHER_COLOR <-"#965DA7"
 MOTHER_COLOR <- "#BC5D41"
 
 usage <- function() {
-'Usage: Rscript plot_cnv_evidence.R DENOVO BINS PED DCRS OUTDIR
+'Usage: Rscript plot_denovo_evidence.R DENOVO BINS PED DCRS OUTDIR
 
 DENOVO   de novo callset
 BINS     Genomic intervals file used by the gCNV pipeline
