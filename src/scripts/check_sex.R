@@ -146,10 +146,10 @@ ploidy_from_batch <- function(batch, dcr_map) {
         error = function(cnd) cnd
     )
 
-    if (inherits(dcr_x, "dcr_parse_error")) (
+    if (inherits(dcr_x, "dcr_parse_error")) {
         dcr_x <- get_batch_dcr(hg19_x, dcr_paths)
         dcr_y <- get_batch_dcr(hg19_y, dcr_paths)
-    )
+    }
 
     if (!inherits(dcr_x, "error")) {
         dcr_y <- get_batch_dcr(hg38_y, dcr_paths)
@@ -165,6 +165,8 @@ ploidy_from_batch <- function(batch, dcr_map) {
         stop(sprintf("batch %s missing chrY dCR regions", batch))
     }
 
+    setDT(dcr_x)
+    setDT(dcr_y)
     mean_x <- dcr_x[, lapply(.SD, mean), .SDcols = !c("chr", "start", "end")]
     ploidy_x <- melt(mean_x,
                      measure.vars = colnames(mean_x),
@@ -208,7 +210,7 @@ maphash(dcrs, \(k, v) { i <<- i + 1; batch_ids[i] <<- k })
 
 log_info("estimating ploidy from dCR")
 ploidy <- estimate_ploidy(batch_ids, dcrs, args$cpus)
-ploidy[, c("chrX_ploidy", "chrY_ploidy") := list(round(chrX_ploidy, 2), round(chrY_ploidy, 2))]
+ploidy[, c("chrX_ploidy", "chrY_ploidy") := list(sprintf("%0.2f", chrX_ploidy), sprintf("%0.2f", chrY_ploidy))]
 
 log_info("writing output")
 fwrite(ploidy, file = args$OUTPUT, sep = "\t", quote = FALSE)
