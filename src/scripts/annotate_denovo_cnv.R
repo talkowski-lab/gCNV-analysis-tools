@@ -200,6 +200,19 @@ format_sample_ids <- function(x) {
     replace(x, is_long, paste0(substr(x[is_long], 1, 47), "..."))
 }
 
+# Check if a call to mclapply produced any errors.
+# This is useful because mclapply will not propogate errors that occur in the
+# jobs that it runs.
+check_mclapply_errors <- function(x) {
+    errs <- Filter(\(y) !is.null(attr(y, "condition")) && is(attr(y, "condition"), "error"), x)
+
+    if (length(errs) > 0) {
+        stop(attr(errs[[1]], "condition"), call. = FALSE)
+    }
+
+    x
+}
+
 # Compute the M, MF, MM, etc. table for a trio
 dcr_evidence <- function(x, dcr_map) {
     region <- gregion(x$chr, x$start, x$end)
@@ -462,6 +475,8 @@ autosome_denovo <- function(calls, bins, ped, dcrs, recal_freq, hq_cols, max_fre
     rg <- mclapply(seq_len(nrow(dn)),
                    \(i) dcr_evidence(as.list(dn[i, ]), dcrs),
                    mc.cores = nproc) |>
+        suppressWarnings() |>
+        check_mclapply_errors() |>
         rbindlist()
     setDTthreads(old_dtthreads)
 
@@ -592,6 +607,8 @@ chrx_denovo <- function(calls, bins, ped, dcrs, recal_freq, hq_cols, max_freq, n
     rg <- mclapply(seq_len(nrow(dn)),
                    \(i) dcr_evidence(as.list(dn[i, ]), dcrs),
                    mc.cores = nproc) |>
+        suppressWarnings() |>
+        check_mclapply_errors() |>
         rbindlist()
     setDTthreads(old_dtthreads)
 
