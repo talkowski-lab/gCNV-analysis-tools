@@ -66,10 +66,10 @@ task DeNovo {
 
     Array[String]? batch_ids
 
-    Boolean? recal_freq
+    Boolean recal_freq = true
     String? hq_cols
     Float? max_freq
-    Boolean? skip_allosomes
+    Boolean skip_allosomes = false
 
     RuntimeAttr? runtime_attr_override
   }
@@ -118,10 +118,10 @@ task DeNovo {
       dcrs="${dcr_paths}"
     fi
     Rscript /opt/gcnv/scripts/annotate_denovo_cnv.R \
-      ~{if select_first([recal_freq, true]) then '' else '--no-recal-freq'} \
+      ~{if recal_freq then '' else '--no-recal-freq'} \
       ~{if defined(hq_cols) then '--hq-cols ~{hq_cols}' else ''} \
       ~{if defined(max_freq) then '--max-freq ~{max_freq}' else ''} \
-      ~{if select_first([skip_allosomes, false]) then '--skip-allosomes' else ''} \
+      ~{if skip_allosomes then '--skip-allosomes' else ''} \
       --cpus ~{cpus} \
       '~{callset}' \
       '~{intervals}' \
