@@ -22,6 +22,7 @@ workflow AnnotateDeNovo {
     Boolean? recal_freq # recalulate variant frequency (default is true)
     String? hq_cols     # list of columns that indicate high-quality calls
     Float? max_freq     # maximum variant frequency to consider
+    Boolean? skip_allosomes # skip de novo calling on allosomes
 
     RuntimeAttr? runtime_attr_override
   }
@@ -42,6 +43,7 @@ workflow AnnotateDeNovo {
       recal_freq = recal_freq,
       hq_cols = hq_cols,
       max_freq = max_freq,
+      skip_allosomes = skip_allosomes,
 
       runtime_attr_override = runtime_attr_override
   }
@@ -67,6 +69,7 @@ task DeNovo {
     Boolean? recal_freq
     String? hq_cols
     Float? max_freq
+    Boolean? skip_allosomes
 
     RuntimeAttr? runtime_attr_override
   }
@@ -118,6 +121,7 @@ task DeNovo {
       ~{if select_first([recal_freq, true]) then '' else '--no-recal-freq'} \
       ~{if defined(hq_cols) then '--hq-cols ~{hq_cols}' else ''} \
       ~{if defined(max_freq) then '--max-freq ~{max_freq}' else ''} \
+      ~{if select_first([skip_allosomes, false]) then '--skip-allosomes' else ''} \
       --cpus ~{cpus} \
       '~{callset}' \
       '~{intervals}' \
