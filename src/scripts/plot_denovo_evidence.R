@@ -21,7 +21,7 @@ OUTDIR     Path to the output directory. The directory must not exist
 
 parse_args <- function() {
     argv <- commandArgs(trailingOnly = TRUE)
-    if (length(argv) != 5) {
+    if (length(argv) != 6) {
         cat(usage(), sep = "", file = stderr())
         quit(save = "no", 2)
     }
