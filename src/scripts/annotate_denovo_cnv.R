@@ -3,7 +3,8 @@
 DEFAULT_OPTS <- list(recal_freq = TRUE,
                      hq_cols = c("PASS_SAMPLE", "PASS_QS"),
                      max_freq = 0.01,
-                     cpus = 1L)
+                     cpus = 1L,
+                     allosomes = TRUE)
 
 DEFAULT_ARGS <- list(CALLSET = NULL,
                      BINS = NULL,
@@ -35,6 +36,7 @@ Options:
                           considered rare. Only rare de novo CNVs are annotated.
                           [0.01]
   -p,--cpus[=]<cpus>      Number of processors to use. [1]
+  -s,--skip-allosomes     Do not call de novo variants on allosomes. [FALSE]
 '
 }
 
@@ -143,6 +145,12 @@ parse_args <- function() {
                 msg_and_exit("number of processors must be greater than 0\n")
             }
             i <- x[[2]]
+            next
+        }
+
+        if (grepl("^((-s)|(--skip-allosomes))$", argv[[i]])) {
+            opts$allosomes <- FALSE
+            i <- i + 1
             next
         }
 
@@ -679,17 +687,22 @@ dn_auto <- autosome_denovo(raw_calls, bins, ped, dcrs,
                            nproc = args$cpus)
 log_info("completed calling autosome de novo CNVs")
 
-log_info("calling chrX de novo CNVs")
-dn_chrx <- chrx_denovo(raw_calls, bins, ped, dcrs,
-                       recal_freq = args$recal_freq,
-                       hq_cols = args$hq_cols,
-                       max_freq = args$max_freq,
-                       nproc = args$cpus)
-log_info("completed calling chrX de novo CNVs")
+if (args$allosomes) {
+    log_info("calling chrX de novo CNVs")
+    dn_chrx <- chrx_denovo(raw_calls, bins, ped, dcrs,
+                           recal_freq = args$recal_freq,
+                           hq_cols = args$hq_cols,
+                           max_freq = args$max_freq,
+                           nproc = args$cpus)
+    log_info("completed calling chrX de novo CNVs")
+    common_cols <- intersect(colnames(dn_auto), colnames(dn_chrx))
+    dn_all <- rbind(dn_auto[, ..common_cols], dn_chrx[, ..common_cols])
+} else {
+    log_info("skipping de novo CNVs on allosomes")
+    dn_all <- dn_auto
+}
 
 # Write output to file --------------------------------------------------------
-common_cols <- intersect(colnames(dn_auto), colnames(dn_chrx))
-dn_all <- rbind(dn_auto[, ..common_cols], dn_chrx[, ..common_cols])
 dn_all <- ped[, c("family_id", "sample_id")][dn_all,
                                              on = c(sample_id = "sample"),
                                              mult = "first"]
