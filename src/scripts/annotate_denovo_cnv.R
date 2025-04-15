@@ -473,6 +473,9 @@ autosome_denovo <- function(calls, bins, ped, dcrs, recal_freq, hq_cols, max_fre
                           calls[sample %in% ped$maternal_id],
                           bins)
     log_info(sprintf("found %d de novo events based on overlap", nrow(dn)))
+    if (nrow(dn) == 0) {
+        return(dn)
+    }
 
     # Gather dCR evidence -----------------------------------------------------
     log_info("gathering dCR evidence")
@@ -606,6 +609,9 @@ chrx_denovo <- function(calls, bins, ped, dcrs, recal_freq, hq_cols, max_freq, n
                           calls[sample %in% ped$maternal_id & grepl("X", chr)],
                           bins)
     log_info(sprintf("found %d de novo events based on overlap", nrow(dn)))
+    if (nrow(dn) == 0) {
+        return(dn)
+    }
 
     # Gather dCR evidence -----------------------------------------------------
     log_info("gathering dCR evidence")
