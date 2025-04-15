@@ -186,7 +186,7 @@ plot_mult_interval <- function(x, dcr, main) {
     if (!all(is.na(dcr$father))) {
         plot_sample_dcr_line(dcr$father, FATHER_COLOR, x$paternal_phenotype)
     }
-    if (!all(is.na(dcr$mother)) {
+    if (!all(is.na(dcr$mother))) {
         plot_sample_dcr_line(dcr$mother, MOTHER_COLOR, x$maternal_phenotype)
     }
 
