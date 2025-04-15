@@ -7,13 +7,15 @@ MOTHER_COLOR <- "#BC5D41"
 usage <- function() {
 'Usage: Rscript plot_denovo_evidence.R DENOVO BINS PED DCRS OUTDIR
 
-DENOVO   de novo callset
-BINS     Genomic intervals file used by the gCNV pipeline
-PED      Pedigree file
-DCRS     A file with either the paths, one per line, to the dCR matrices or
-         two tab-separated columns with the batch ID in the first column and
-         path to the dCR matrix for that batch in the second column
-OUTDIR   Path to the output directory. The directory must not exist
+DENOVO     de novo callset
+BATCH_MAP  A two-column, tab-delimited table with all the batch IDs in column
+           1 and sample IDs in column 2.
+BINS       Genomic intervals file used by the gCNV pipeline
+PED        Pedigree file
+DCRS       A file with either the paths, one per line, to the dCR matrices or
+           two tab-separated columns with the batch ID in the first column and
+           path to the dCR matrix for that batch in the second column
+OUTDIR     Path to the output directory. The directory must not exist
 '
 }
 
@@ -25,7 +27,7 @@ parse_args <- function() {
     }
 
     args <- as.list(argv)
-    names(args) <- c("DENOVO", "BINS", "PED", "DCRS", "OUTDIR")
+    names(args) <- c("DENOVO", "BATCH_MAP", "BINS", "PED", "DCRS", "OUTDIR")
 
     args
 }
@@ -181,8 +183,12 @@ plot_mult_interval <- function(x, dcr, main) {
             main = main)
 
     plot_sample_dcr_line(dcr$child, CHILD_COLOR, x$phenotype)
-    plot_sample_dcr_line(dcr$father, FATHER_COLOR, x$paternal_phenotype)
-    plot_sample_dcr_line(dcr$mother, MOTHER_COLOR, x$maternal_phenotype)
+    if (!all(is.na(dcr$father))) {
+        plot_sample_dcr_line(dcr$father, FATHER_COLOR, x$paternal_phenotype)
+    }
+    if (!all(is.na(dcr$mother)) {
+        plot_sample_dcr_line(dcr$mother, MOTHER_COLOR, x$maternal_phenotype)
+    }
 
     if (length(blocks$left_flank) > 0) {
         rect(1, 0, blocks$left_flank[[2]] + 0.5, 5, col = "#33333311", border = NA)
@@ -249,54 +255,49 @@ get_trio_dcr <- function(trio,
                          pad = 0.2) {
     sv_region <- gregion(trio$chr, trio$start, trio$end)
     expanded_region <- expand_region_by_bins(sv_region, bins, pad)
-
-    trio_ids <- c(trio$sample, trio$paternal_id, trio$maternal_id)
-    batches <- c(trio$batch, trio$paternal_batch, trio$maternal_batch)
     coord_cols <- c("chr", "start", "end")
+    trio_ids <- c(trio$sample, trio$paternal_id, trio$maternal_id)
+    trio_ids <- trio_ids[!is.na(trio_ids)]
 
-    batch_groups <- split(trio_ids, batches)
-    trio_dcr <- vector(mode = "list", length = 3)
-    names(trio_dcr) <- c("child", "father", "mother")
-    bg_dcr <- NULL
-    for (i in seq_along(batch_groups)) {
-        batch <- names(batch_groups)[[i]]
-        samples <- batch_groups[[i]]
-        dcr <- get_samples_dcr(expanded_region,
-                               gethash(dcr_paths, batch),
-                               batch_groups[[i]],
-                               include_bg = trio$sample %in% samples,
-                               squeeze = TRUE,
-                               reduce = TRUE)
-
-        if (trio$sample %in% samples) {
-            trio_dcr$child <- as.data.table(dcr[c(coord_cols, trio$sample)])
-            setkey(trio_dcr$child, chr, start, end)
-            setnames(trio_dcr$child, trio$sample, "child")
-            bg_samples <- colnames(dcr)[!colnames(dcr) %in% c(coord_cols, samples)]
-            if (length(bg_samples) == 0) {
-                stop("child batch has no background samples", call. = FALSE)
-            }
-            bg_samples <- sample(bg_samples, min(length(bg_samples), bg))
-            bg_dcr <- as.data.table(dcr[c(coord_cols, bg_samples)])
-            setnames(bg_dcr, bg_samples, paste0("bg_", seq_along(bg_samples)))
-            setkey(bg_dcr, chr, start, end)
-        }
-
-        if (trio$paternal_id %in% samples) {
-            trio_dcr$father <- as.data.table(dcr[c(coord_cols, trio$paternal_id)])
-            setkey(trio_dcr$father, chr, start, end)
-            setnames(trio_dcr$father, trio$paternal_id, "father")
-        }
-
-        if (trio$maternal_id %in% samples) {
-            trio_dcr$mother <- as.data.table(dcr[c(coord_cols, trio$maternal_id)])
-            setkey(trio_dcr$mother, chr, start, end)
-            setnames(trio_dcr$mother, trio$maternal_id, "mother")
-        }
+    child_dcr <- get_samples_dcr(expanded_region,
+                                 gethash(dcr_paths, trio$batch),
+                                 trio$sample,
+                                 include_bg = TRUE)
+    setnames(child_dcr, trio$sample, "child")
+    bg_samples <- colnames(child_dcr)[!colnames(child_dcr) %in% c(coord_cols, trio_ids)]
+    if (length(bg_samples) == 0) {
+        stop("child batch has no background samples", call. = FALSE)
     }
+    bg_samples <- sample(bg_samples, min(length(bg_samples), bg))
+    bg_dcr <- as.data.table(child_dcr[c(coord_cols, bg_samples)])
+    setnames(bg_dcr, bg_samples, paste0("bg_", seq_along(bg_samples)))
+    setkey(bg_dcr, chr, start, end)
 
     # Assume ranges are disjoint
-    merged_dcr <- Reduce(\(x, y) merge(x, y, all = TRUE), trio_dcr)
+    merged_dcr <- child_dcr
+
+    if (!is.na(trio$paternal_id)) {
+        father_dcr <- get_samples_dcr(expanded_region,
+                                      gethash(dcr_paths, trio$paternal_batch),
+                                      trio$paternal_id)
+        setnames(father_dcr, trio$paternal_id, "father")
+        setkey(father_dcr, chr, start, end)
+        merged_dcr <- merge(merged_dcr, father_dcr, all = TRUE)
+    } else {
+        merged_dcr[, father := NA_real_]
+    }
+
+    if (!is.na(trio$maternal_id)) {
+        mother_dcr <- get_samples_dcr(expanded_region,
+                                      gethash(dcr_paths, trio$maternal_batch),
+                                      trio$maternal_id)
+        setnames(mother_dcr, trio$maternal_id, "mother")
+        setkey(mother_dcr, chr, start, end)
+        merged_dcr <- merge(merged_dcr, mother_dcr, all = TRUE)
+    } else {
+        merged_dcr[, mother := NA_real_]
+    }
+
     merged_dcr <- merge(merged_dcr, bg_dcr, all.x = TRUE)
     merged_dcr[, in_flank := end < sv_region$start | start > sv_region$end]
 
@@ -342,6 +343,17 @@ denovo <- read_callset(args$DENOVO)
 denovo[,  `:=`(chr = as.character(chr),
                 start = as.integer(start),
                 end = as.integer(end))]
+samples_dt <- fread(args$BATCH_MAP,
+                    header = FALSE,
+                    sep = "\t",
+                    col.names = c("batch", "sample"),
+                    key = "batch")
+samples_dt <- unique(samples_dt)
+if (anyDuplicated(samples_dt, by = "sample") > 0) {
+    log_error("samples table contains duplicate sample IDs")
+    quit(same = "no", status = 1)
+}
+
 is_hg19 <- any(c(as.character(1:22), "X", "Y") %in% denovo$chr)
 log_info("reading bins")
 bins <- read_gcnv_bins(args$BINS, reduce = is_hg19)
@@ -350,6 +362,26 @@ pedigree <- read_pedigree(args$PED)
 log_info("reading dCR paths")
 dcr_paths <- read_dcr_list(args$DCRS)
 setup_outdir(args$OUTDIR)
+
+# Merge in paternal ID if not present -----------------------------------------
+if (!("paternal_id" %in% colnames(denovo))) {
+    denovo <- pedigree[, list(sample = sample_id, paternal_id)][denovo, on = "sample"]
+    if ("paternal_batch" %in% colnames(denovo)) {
+        denovo[, paternal_batch := NULL]
+    }
+
+    denovo <- samples_dt[, list(paternal_id = sample, paternal_batch = "batch")][denovo, on = "paternal_id"]
+}
+
+# Merge in maternal ID if not present -----------------------------------------
+if (!("maternal_id" %in% colnames(denovo))) {
+    denovo <- pedigree[, list(sample = sample_id, maternal_id)][denovo, on = "sample"]
+    if ("maternal_batch" %in% colnames(denovo)) {
+        denovo[, maternal_batch := NULL]
+    }
+
+    denovo <- samples_dt[, list(maternal_id = sample, maternal_batch = "batch")][denovo, on = "maternal_id"]
+}
 
 # Merge in phenotype ----------------------------------------------------------
 phen <- pedigree[, list(sample = sample_id, phenotype = phenotype)]

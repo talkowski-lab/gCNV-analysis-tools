@@ -1,9 +1,14 @@
 version 1.0
 
 import "Structs.wdl"
+import "MakeSampleBatchMap.wdl" as msbm
 
 workflow PlotDeNovoEvidence {
   input {
+    Array[String] sample_set_ids
+    File callset
+    String? sample_set_id_trim_regex
+
     File denovo   # de novo calls
     File intervals # gCNV intervals
     File pedigree  # Pedigree for the entire cohort
@@ -17,8 +22,17 @@ workflow PlotDeNovoEvidence {
     RuntimeAttr? runtime_attr_override
   }
 
+  call msbm.MakeSampleBatchMap {
+    input:
+      sample_set_ids = sample_set_ids,
+      callset = callset,
+      runtime_docker = runtime_docker,
+      sample_set_id_trim_regex = sample_set_id_trim_regex
+  }
+
   call PlotRD {
     input:
+      sample_batch_map = MakeSampleBatchMap.sample_batch_map,
       denovo = denovo,
       pedigree = pedigree,
       intervals = intervals,
@@ -39,6 +53,7 @@ workflow PlotDeNovoEvidence {
 
 task PlotRD {
   input {
+    File sample_batch_map
     File denovo
     File pedigree
     File intervals
@@ -95,6 +110,7 @@ task PlotRD {
     fi
     Rscript /opt/gcnv/scripts/plot_denovo_evidence.R \
       '~{denovo}' \
+      '~{sample_batch_map}' \
       '~{intervals}' \
       '~{pedigree}' \
       "${dcrs}" \
