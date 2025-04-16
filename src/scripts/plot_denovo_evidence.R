@@ -5,7 +5,7 @@ FATHER_COLOR <-"#965DA7"
 MOTHER_COLOR <- "#BC5D41"
 
 usage <- function() {
-'Usage: Rscript plot_denovo_evidence.R DENOVO BINS PED DCRS OUTDIR
+'Usage: Rscript plot_denovo_evidence.R DENOVO BATCH_MAP BINS PED DCRS OUTDIR
 
 DENOVO     de novo callset
 BATCH_MAP  A two-column, tab-delimited table with all the batch IDs in column
