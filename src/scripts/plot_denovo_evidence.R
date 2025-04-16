@@ -279,7 +279,8 @@ get_trio_dcr <- function(trio,
     if (!(is.na(trio$paternal_id) | is.na(trio$paternal_batch))) {
         father_dcr <- get_samples_dcr(expanded_region,
                                       gethash(dcr_paths, trio$paternal_batch),
-                                      trio$paternal_id)
+                                      trio$paternal_id) |>
+            as.data.table()
         setnames(father_dcr, trio$paternal_id, "father")
         setkey(father_dcr, chr, start, end)
         merged_dcr <- merge(merged_dcr, father_dcr, all = TRUE)
@@ -290,7 +291,8 @@ get_trio_dcr <- function(trio,
     if (!(is.na(trio$maternal_id) | is.na(trio$maternal_batch))) {
         mother_dcr <- get_samples_dcr(expanded_region,
                                       gethash(dcr_paths, trio$maternal_batch),
-                                      trio$maternal_id)
+                                      trio$maternal_id) |>
+            as.data.table()
         setnames(mother_dcr, trio$maternal_id, "mother")
         setkey(mother_dcr, chr, start, end)
         merged_dcr <- merge(merged_dcr, mother_dcr, all = TRUE)
