@@ -276,7 +276,7 @@ get_trio_dcr <- function(trio,
     # Assume ranges are disjoint
     merged_dcr <- child_dcr
 
-    if (!is.na(trio$paternal_id)) {
+    if (!(is.na(trio$paternal_id) | is.na(trio$paternal_batch))) {
         father_dcr <- get_samples_dcr(expanded_region,
                                       gethash(dcr_paths, trio$paternal_batch),
                                       trio$paternal_id)
@@ -287,7 +287,7 @@ get_trio_dcr <- function(trio,
         merged_dcr[, father := NA_real_]
     }
 
-    if (!is.na(trio$maternal_id)) {
+    if (!(is.na(trio$maternal_id) | is.na(trio$maternal_batch))) {
         mother_dcr <- get_samples_dcr(expanded_region,
                                       gethash(dcr_paths, trio$maternal_batch),
                                       trio$maternal_id)
