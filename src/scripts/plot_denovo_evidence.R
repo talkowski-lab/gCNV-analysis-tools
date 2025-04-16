@@ -370,7 +370,7 @@ if (!("paternal_id" %in% colnames(denovo))) {
         denovo[, paternal_batch := NULL]
     }
 
-    denovo <- samples_dt[, list(paternal_id = sample, paternal_batch = "batch")][denovo, on = "paternal_id"]
+    denovo <- samples_dt[, list(paternal_id = sample, paternal_batch = batch)][denovo, on = "paternal_id"]
 }
 
 # Merge in maternal ID if not present -----------------------------------------
@@ -380,7 +380,7 @@ if (!("maternal_id" %in% colnames(denovo))) {
         denovo[, maternal_batch := NULL]
     }
 
-    denovo <- samples_dt[, list(maternal_id = sample, maternal_batch = "batch")][denovo, on = "maternal_id"]
+    denovo <- samples_dt[, list(maternal_id = sample, maternal_batch = batch)][denovo, on = "maternal_id"]
 }
 
 # Merge in phenotype ----------------------------------------------------------
