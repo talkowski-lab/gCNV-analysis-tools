@@ -37,7 +37,7 @@ task Merge {
   RuntimeAttr runtime_default = object {
     mem_gb: 8 + extra_mem,
     cpu_cores: 2,
-    disk_gb: ceil(input_size * 2) + 16,
+    disk_gb: ceil(input_size * 4) + 16,
     boot_disk_gb: 8,
     preemptible_tries: 2,
     max_retries: 1
