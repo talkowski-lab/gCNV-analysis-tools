@@ -35,9 +35,9 @@ task Merge {
   Float input_size = size(sample_dcrs, 'GB')
   Int extra_mem = if length(sample_dcrs) <= 300 then 0 else floor(length(sample_dcrs) / 300) - 1
   RuntimeAttr runtime_default = object {
-    mem_gb: 8 + extra_mem,
+    mem_gb: 16 + extra_mem,
     cpu_cores: 2,
-    disk_gb: ceil(input_size * 4) + 16,
+    disk_gb: ceil(input_size * 8) + 16,
     boot_disk_gb: 8,
     preemptible_tries: 2,
     max_retries: 1
