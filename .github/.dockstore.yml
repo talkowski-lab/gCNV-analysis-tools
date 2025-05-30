@@ -44,3 +44,12 @@ workflows:
         - main
       tags:
         - /.*/
+
+  - name: MergeDcr
+    subclass: WDL
+    primaryDescriptorPath: /wdl/MergeDcr.wdl
+    filters:
+      branches:
+        - main
+      tags:
+        - /.*/

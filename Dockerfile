@@ -2,6 +2,8 @@ FROM r-base:4.4.1
 
 ARG HTSLIB_VERSION="1.21"
 ARG HTSLIB_URI="https://github.com/samtools/htslib/releases/download/${HTSLIB_VERSION}/htslib-${HTSLIB_VERSION}.tar.bz2"
+ARG DUCKDB_VERSION="1.3.0"
+ARG DUCKDB_URI="https://github.com/duckdb/duckdb/releases/download/v${DUCKDB_VERSION}/duckdb_cli-linux-amd64.zip"
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
@@ -14,6 +16,10 @@ RUN apt-get update \
     libssl-dev \
     curl \
   && rm -rf /var/lib/apt/lists/*
+
+RUN curl -L -o duckdb_cli-linux-amd64.zip "${DUCKDB_URI}" \
+  && unzip duckdb_cli-linux-amd64.zip -d /usr/local/bin \
+  && rm duckdb_cli-linux-amd64.zip
 
 RUN curl -L -o htslib.tar.bz2 "${HTSLIB_URI}" \
   && tar -jxf htslib.tar.bz2 \
