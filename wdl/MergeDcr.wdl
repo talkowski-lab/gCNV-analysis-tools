@@ -33,21 +33,22 @@ task Merge {
   }
 
   Float input_size = size(sample_dcrs, 'GB')
-  Int extra_mem = if length(sample_dcrs) <= 300 then 0 else floor(length(sample_dcrs) / 300) - 1
+  Int extra_mem = length(sample_dcrs) * 0.01
   RuntimeAttr runtime_default = object {
-    mem_gb: 16 + extra_mem,
-    cpu_cores: 2,
+    mem_gb: 8 + extra_mem,
+    cpu_cores: 4,
     disk_gb: ceil(input_size * 8) + 16,
     boot_disk_gb: 8,
     preemptible_tries: 2,
     max_retries: 1
   }
   RuntimeAttr runtime_attr = select_first([runtime_attr_override, runtime_default])
+  Int cpus = select_first([runtime_attr.cpu_cores, runtime_default.cpu_cores])
 
   runtime {
     memory: '${select_first([runtime_attr.mem_gb, runtime_default.mem_gb])} GB'
-    disks: 'local-disk ${select_first([runtime_attr.disk_gb, runtime_default.disk_gb])} HDD'
-    cpu: select_first([runtime_attr.cpu_cores, runtime_default.cpu_cores])
+    disks: 'local-disk ${select_first([runtime_attr.disk_gb, runtime_default.disk_gb])} SSD'
+    cpu: cpus
     preemptible: select_first([runtime_attr.preemptible_tries, runtime_default.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, runtime_default.max_retries])
     docker: runtime_docker
@@ -115,7 +116,7 @@ EOF
 
     duckdb -bail dcr.duckdb < commands.sql \
       | awk 'FNR==1{$0 = "#" $0} 1' \
-      | bgzip -c > '~{output_name}'
+      | bgzip --threads ~{cpus} -c > '~{output_name}'
     tabix --sequence 1 --begin 2 --end 3 --comment '#' --zero-based '~{output_name}'
 
     declare -i all_count not_null_count
