@@ -33,7 +33,7 @@ task Merge {
   }
 
   Float input_size = size(sample_dcrs, 'GB')
-  Int extra_mem = length(sample_dcrs) * 0.01
+  Float extra_mem = length(sample_dcrs) * 0.01
   RuntimeAttr runtime_default = object {
     mem_gb: 8 + extra_mem,
     cpu_cores: 4,
