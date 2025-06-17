@@ -53,3 +53,12 @@ workflows:
         - main
       tags:
         - /.*/
+
+  - name: PlotCnvEvidence
+    subclass: WDL
+    primaryDescriptorPath: /wdl/PlotCnvEvidence.wdl
+    filters:
+      branches:
+        - main
+      tags:
+        - /.*/
