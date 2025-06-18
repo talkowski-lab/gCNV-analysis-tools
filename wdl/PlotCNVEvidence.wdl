@@ -2,7 +2,7 @@ version 1.0
 
 import "Structs.wdl"
 
-workflow PlotCnvEvidence {
+workflow PlotCNVEvidence {
   input {
     Array[String] sample_set_ids
     File callset
