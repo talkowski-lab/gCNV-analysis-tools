@@ -1,8 +1,8 @@
 FROM r-base:4.4.1
 
-ARG HTSLIB_VERSION="1.21"
+ARG HTSLIB_VERSION="1.22"
 ARG HTSLIB_URI="https://github.com/samtools/htslib/releases/download/${HTSLIB_VERSION}/htslib-${HTSLIB_VERSION}.tar.bz2"
-ARG DUCKDB_VERSION="1.3.0"
+ARG DUCKDB_VERSION="1.3.1"
 ARG DUCKDB_URI="https://github.com/duckdb/duckdb/releases/download/v${DUCKDB_VERSION}/duckdb_cli-linux-amd64.zip"
 
 RUN apt-get update \
