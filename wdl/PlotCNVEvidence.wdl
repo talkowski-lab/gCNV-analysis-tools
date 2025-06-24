@@ -4,7 +4,6 @@ import "Structs.wdl"
 
 workflow PlotCNVEvidence {
   input {
-    Array[String] sample_set_ids
     File callset
     Int calls_per_split = 300
 
