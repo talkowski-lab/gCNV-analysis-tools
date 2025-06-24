@@ -104,7 +104,7 @@ task SplitCallset {
         i = 0
         next
       }
-      (NR - 1) %% max == 1 {
+      (NR - 1) % max == 1 {
         if (out) {
           close(out)
         }
