@@ -262,19 +262,20 @@ get_trio_dcr <- function(trio,
     child_dcr <- get_samples_dcr(expanded_region,
                                  gethash(dcr_paths, trio$batch),
                                  trio$sample,
-                                 include_bg = TRUE)
-    setnames(child_dcr, trio$sample, "child")
+                                 include_bg = TRUE) |>
+        as.data.table()
     bg_samples <- colnames(child_dcr)[!colnames(child_dcr) %in% c(coord_cols, trio_ids)]
     if (length(bg_samples) == 0) {
         stop("child batch has no background samples", call. = FALSE)
     }
-    bg_samples <- sample(bg_samples, min(length(bg_samples), bg))
-    bg_dcr <- as.data.table(child_dcr[c(coord_cols, bg_samples)])
-    setnames(bg_dcr, bg_samples, paste0("bg_", seq_along(bg_samples)))
-    setkey(bg_dcr, chr, start, end)
-
-    # Assume ranges are disjoint
-    merged_dcr <- child_dcr
+    bg_samples_keep <- sample(bg_samples, min(length(bg_samples), bg))
+    if (length(bg_samples_keep) < length(bg_samples)) {
+        bg_samples_rm <- setdiff(bg_samples, bg_samples_keep)
+        child_dcr[, (bg_samples_rm) := list(NULL)]
+    }
+    setnames(child_dcr, bg_samples_keep, paste0("bg_", seq_along(bg_samples_keep)))
+    setnames(child_dcr, trio$sample, "child")
+    setkey(child_dcr, chr, start, end)
 
     if (!(is.na(trio$paternal_id) | is.na(trio$paternal_batch))) {
         father_dcr <- get_samples_dcr(expanded_region,
@@ -283,9 +284,9 @@ get_trio_dcr <- function(trio,
             as.data.table()
         setnames(father_dcr, trio$paternal_id, "father")
         setkey(father_dcr, chr, start, end)
-        merged_dcr <- merge(merged_dcr, father_dcr, all = TRUE)
+        child_dcr <- merge(child_dcr, father_dcr, all = TRUE)
     } else {
-        merged_dcr[, father := NA_real_]
+        child_dcr[, father := NA_real_]
     }
 
     if (!(is.na(trio$maternal_id) | is.na(trio$maternal_batch))) {
@@ -295,15 +296,14 @@ get_trio_dcr <- function(trio,
             as.data.table()
         setnames(mother_dcr, trio$maternal_id, "mother")
         setkey(mother_dcr, chr, start, end)
-        merged_dcr <- merge(merged_dcr, mother_dcr, all = TRUE)
+        child_dcr <- merge(child_dcr, mother_dcr, all = TRUE)
     } else {
-        merged_dcr[, mother := NA_real_]
+        child_dcr[, mother := NA_real_]
     }
 
-    merged_dcr <- merge(merged_dcr, bg_dcr, all.x = TRUE)
-    merged_dcr[, in_flank := end < sv_region$start | start > sv_region$end]
+    child_dcr[, in_flank := end < sv_region$start | start > sv_region$end]
 
-    merged_dcr
+    child_dcr
 }
 
 plot_denovo <- function(x, dcr_paths, bins, outdir) {
