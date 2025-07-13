@@ -429,7 +429,8 @@ filter_hq_calls <- function(calls, cols) {
     x <- paste0(cols, collapse = " & ")
 
     if (length(cols) == 1) {
-        return(calls[x == TRUE])
+        filter <- call("==", as.name(x), TRUE)
+        return(calls[eval(filter)])
     }
 
     calls[eval(parse(text = x))]
@@ -481,7 +482,7 @@ autosome_denovo <- function(calls, bins, ped, dcrs, recal_freq, hq_cols, max_fre
     log_info("gathering dCR evidence")
     dn <- add_parent_batch(dn, calls)
     old_dtthreads <- getDTthreads()
-    # Ensure that datat.table runs single-threaded inside a mclapply call.
+    # Ensure that data.table runs single-threaded inside a mclapply call.
     setDTthreads(1)
     rg <- mclapply(seq_len(nrow(dn)),
                    \(i) dcr_evidence(as.list(dn[i, ]), dcrs),
