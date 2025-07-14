@@ -365,25 +365,13 @@ log_info("reading dCR paths")
 dcr_paths <- read_dcr_list(args$DCRS)
 setup_outdir(args$OUTDIR)
 
-# Merge in paternal ID if not present -----------------------------------------
-if (!("paternal_id" %in% colnames(denovo))) {
-    denovo <- pedigree[, list(sample = sample_id, paternal_id)][denovo, on = "sample"]
-    if ("paternal_batch" %in% colnames(denovo)) {
-        denovo[, paternal_batch := NULL]
-    }
-
-    denovo <- samples_dt[, list(paternal_id = sample, paternal_batch = batch)][denovo, on = "paternal_id"]
-}
-
-# Merge in maternal ID if not present -----------------------------------------
-if (!("maternal_id" %in% colnames(denovo))) {
-    denovo <- pedigree[, list(sample = sample_id, maternal_id)][denovo, on = "sample"]
-    if ("maternal_batch" %in% colnames(denovo)) {
-        denovo[, maternal_batch := NULL]
-    }
-
-    denovo <- samples_dt[, list(maternal_id = sample, maternal_batch = batch)][denovo, on = "maternal_id"]
-}
+# Merge in parental ID/batch --------------------------------------------------
+# ignore warnings about trying to remove non-existing columns
+suppressWarnings(denovo[, c("paternal_id", "paternal_batch", "maternal_id", "maternal_batch") := list(NULL)])
+denovo <- pedigree[, list(sample = sample_id, paternal_id)][denovo, on = "sample"]
+denovo <- samples_dt[, list(paternal_id = sample, paternal_batch = batch)][denovo, on = "paternal_id"]
+denovo <- pedigree[, list(sample = sample_id, maternal_id)][denovo, on = "sample"]
+denovo <- samples_dt[, list(maternal_id = sample, maternal_batch = batch)][denovo, on = "maternal_id"]
 
 # Merge in phenotype ----------------------------------------------------------
 phen <- pedigree[, list(sample = sample_id, phenotype = phenotype)]
