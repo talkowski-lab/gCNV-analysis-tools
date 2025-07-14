@@ -1,13 +1,11 @@
 version 1.0
 
 import "Structs.wdl"
-import "MakeSampleBatchMap.wdl" as msbm
 
 workflow PlotDeNovoEvidence {
   input {
     Array[String] sample_set_ids
-    File callset
-    String? sample_set_id_trim_regex
+    Array[File] sample_batch_maps
 
     File denovo   # de novo calls
     File intervals # gCNV intervals
@@ -22,17 +20,9 @@ workflow PlotDeNovoEvidence {
     RuntimeAttr? runtime_attr_override
   }
 
-  call msbm.MakeSampleBatchMap {
-    input:
-      sample_set_ids = sample_set_ids,
-      callset = callset,
-      runtime_docker = runtime_docker,
-      sample_set_id_trim_regex = sample_set_id_trim_regex
-  }
-
   call PlotRD {
     input:
-      sample_batch_map = MakeSampleBatchMap.sample_batch_map,
+      sample_batch_maps = sample_batch_maps,
       denovo = denovo,
       pedigree = pedigree,
       intervals = intervals,
@@ -53,7 +43,7 @@ workflow PlotDeNovoEvidence {
 
 task PlotRD {
   input {
-    File sample_batch_map
+    Array[File] sample_batch_maps
     File denovo
     File pedigree
     File intervals
@@ -67,7 +57,7 @@ task PlotRD {
     RuntimeAttr? runtime_attr_override
   }
 
-  Float input_size = (1.2 * size(dcr_files, 'GB')) + size(denovo, 'GB') + size(pedigree, 'GB')
+  Float input_size = (1.2 * size(dcr_files, 'GB')) + size(denovo, 'GB') + size(pedigree, 'GB') + (size(sample_batch_maps, 'GB') * 2)
   Int disk_size_gb = ceil(input_size) + 8
 
   RuntimeAttr runtime_default = object {
@@ -108,9 +98,11 @@ task PlotRD {
     else
       dcrs="${dcr_paths}"
     fi
+
+    cat '~{write_lines(sample_batch_maps)}' | xargs cat > sample_batch_map.tsv
     Rscript /opt/gcnv/scripts/plot_denovo_evidence.R \
       '~{denovo}' \
-      '~{sample_batch_map}' \
+      'sample_batch_map.tsv' \
       '~{intervals}' \
       '~{pedigree}' \
       "${dcrs}" \
