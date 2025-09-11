@@ -4,7 +4,6 @@ import "Structs.wdl"
 
 workflow PlotDeNovoEvidence {
   input {
-    Array[String] sample_set_ids
     Array[File] sample_batch_maps
 
     File denovo   # de novo calls
