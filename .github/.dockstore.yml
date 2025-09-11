@@ -62,3 +62,12 @@ workflows:
         - main
       tags:
         - /.*/
+
+  - name: MakeSampleBatchMap
+    subclass: WDL
+    primaryDescriptorPath: /wdl/MakeSampleBatchMap.wdl
+    filters:
+      branches:
+        - main
+      tags:
+        - /.*/
