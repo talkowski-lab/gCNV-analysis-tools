@@ -38,7 +38,7 @@ RUN R -e 'install.packages(c("data.table", "R.utils", "BiocManager"))' \
   && R -e 'BiocManager::install(c("IRanges", "Rsamtools", "S4Vectors", "GenomicRanges"))'
 
 RUN cd /tmp \
-  && git clone https://gitlab.com/jdotlim/assertify.git \
+  && git clone https://github.com/talkowski-lab/assertify.git \
   && R CMD build assertify \
   && R CMD INSTALL assertify*.tar.gz \
   && rm -rf assertify*
