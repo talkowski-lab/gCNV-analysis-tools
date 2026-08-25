@@ -5,7 +5,7 @@ import "Structs.wdl"
 workflow CheckSex {
   input {
     Array[File] dcr_files
-    Array[File] dcr_indicies
+    Array[File] dcr_indices
 
     String runtime_docker
 
@@ -21,7 +21,7 @@ workflow CheckSex {
   call EstimatePloidy {
     input:
       dcr_files = dcr_files,
-      dcr_indicies = dcr_indicies,
+      dcr_indices = dcr_indices,
       batch_ids = batch_ids,
       runtime_docker = runtime_docker,
       runtime_attr_override = runtime_attr_override
@@ -35,7 +35,7 @@ workflow CheckSex {
 task EstimatePloidy {
   input {
     Array[File] dcr_files
-    Array[File] dcr_indicies
+    Array[File] dcr_indices
 
     String runtime_docker
 
@@ -44,7 +44,7 @@ task EstimatePloidy {
     RuntimeAttr? runtime_attr_override
   }
 
-  Float input_size = size(dcr_files, 'GB') + size(dcr_indicies, 'GB')
+  Float input_size = size(dcr_files, 'GB') + size(dcr_indices, 'GB')
   Int disk_size_gb = ceil(input_size) + 16
 
   RuntimeAttr runtime_default = object {
@@ -78,7 +78,7 @@ task EstimatePloidy {
     set -o nounset
 
     dcr_paths='~{write_lines(dcr_files)}'
-    cat '~{write_lines(dcr_indicies)}' | xargs -- touch -c -m
+    cat '~{write_lines(dcr_indices)}' | xargs -- touch -c -m
     if [[ '~{make_dcr_map}' = 'true' ]]; then
       paste -d '\t' '~{write_lines(batch_ids_arr)}' "${dcr_paths}" > dcrs.tsv
       dcrs=dcrs.tsv

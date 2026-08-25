@@ -12,7 +12,7 @@ workflow CheckPloidy {
 
     # CheckContigsPloidy -------------------------------------------------------------
     Array[File] dcr_files
-    Array[File] dcr_indicies
+    Array[File] dcr_indices
     Array[String]? contigs
     Boolean? is_hg19
 
@@ -47,7 +47,7 @@ workflow CheckPloidy {
         sample_batch_map = MakeSampleBatchMap.sample_batch_map,
         batch_ids = MakeSampleBatchMap.trimmed_sample_set_ids,
         dcr_files = dcr_files,
-        dcr_indicies = dcr_indicies,
+        dcr_indices = dcr_indices,
         contigs = [co],
         runtime_docker = runtime_docker,
     }
@@ -71,7 +71,7 @@ task CheckContigsPloidy {
     File sample_batch_map
     Array[String] batch_ids
     Array[File] dcr_files
-    Array[File] dcr_indicies
+    Array[File] dcr_indices
     Array[String] contigs
     String runtime_docker
 
@@ -80,7 +80,7 @@ task CheckContigsPloidy {
 
   Int num_samples = length(read_lines(sample_batch_map))
   Float input_size = size(dcr_files, 'GB') +
-    size(dcr_indicies, 'GB') +
+    size(dcr_indices, 'GB') +
     size(sample_batch_map, 'GB')
   Float output_size = num_samples * length(contigs) * 0.000000016
   Int disk_size_gb = ceil(input_size) + ceil(output_size) + 8
@@ -113,7 +113,7 @@ task CheckContigsPloidy {
     set -o nounset
 
     dcr_paths='~{write_lines(dcr_files)}'
-    cat '~{write_lines(dcr_indicies)}' | xargs -- touch -c -m
+    cat '~{write_lines(dcr_indices)}' | xargs -- touch -c -m
     paste -d '\t' '~{write_lines(batch_ids)}' "${dcr_paths}" > dcrs.tsv
 
     Rscript /opt/gcnv/scripts/check_ploidy.R \

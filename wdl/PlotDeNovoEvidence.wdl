@@ -13,7 +13,7 @@ workflow PlotDeNovoEvidence {
     String runtime_docker
 
     Array[File] dcr_files    # denoised coverage ratio files
-    Array[File] dcr_indicies # index files
+    Array[File] dcr_indices # index files
 
     Array[String]? batch_ids
     RuntimeAttr? runtime_attr_override
@@ -29,7 +29,7 @@ workflow PlotDeNovoEvidence {
       runtime_docker = runtime_docker,
 
       dcr_files = dcr_files,
-      dcr_indicies = dcr_indicies,
+      dcr_indices = dcr_indices,
 
       batch_ids = batch_ids,
       runtime_attr_override = runtime_attr_override
@@ -50,7 +50,7 @@ task PlotRD {
     String runtime_docker
 
     Array[File] dcr_files
-    Array[File] dcr_indicies
+    Array[File] dcr_indices
 
     Array[String]? batch_ids
     RuntimeAttr? runtime_attr_override
@@ -90,7 +90,7 @@ task PlotRD {
     set -o nounset
 
     dcr_paths='~{write_lines(dcr_files)}'
-    cat '~{write_lines(dcr_indicies)}' | xargs -- touch -c -m
+    cat '~{write_lines(dcr_indices)}' | xargs -- touch -c -m
     if [[ '~{make_dcr_map}' = 'true' ]]; then
       paste -d '\t' '~{write_lines(batch_ids_arr)}' "${dcr_paths}" > dcrs.tsv
       dcrs=dcrs.tsv
