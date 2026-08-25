@@ -10,7 +10,7 @@ workflow AnnotateDeNovo {
 
     String runtime_docker 
 
-    Array[File] dcr_files    # denoised coverage ratio files
+    Array[File] dcr_files   # denoised copy ratio files
     Array[File] dcr_indices # index files
 
     # This option is for when the dRC matrix filenames are not in the expected

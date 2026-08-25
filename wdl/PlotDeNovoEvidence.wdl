@@ -6,13 +6,13 @@ workflow PlotDeNovoEvidence {
   input {
     Array[File] sample_batch_maps
 
-    File denovo   # de novo calls
+    File denovo    # de novo calls
     File intervals # gCNV intervals
     File pedigree  # Pedigree for the entire cohort
 
     String runtime_docker
 
-    Array[File] dcr_files    # denoised coverage ratio files
+    Array[File] dcr_files   # denoised copy ratio files
     Array[File] dcr_indices # index files
 
     Array[String]? batch_ids
