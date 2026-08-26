@@ -30,13 +30,13 @@ task MakeMap {
   }
 
   runtime {
-    memory: '1 GB'
+    memory: '3.75 GiB'
     disks: 'local-disk 16 HDD'
     cpus: 1
     preemptible: 3
     maxRetries: 1
     docker: runtime_docker
-    bootDiskSizeGb: 16
+    bootDiskSizeGb: 8
   }
 
   command <<<
