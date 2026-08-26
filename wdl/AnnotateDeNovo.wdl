@@ -14,7 +14,7 @@ workflow AnnotateDeNovo {
 
     String runtime_docker
 
-    Boolean? recal_freq     # recalulate variant frequency (default is true)
+    Boolean? recal_freq     # recalculate variant frequency (default is true)
     String? hq_cols         # list of columns that indicate high-quality calls
     Float? max_freq         # maximum variant frequency to consider
     Boolean? skip_allosomes # skip de novo calling on allosomes
