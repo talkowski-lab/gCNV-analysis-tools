@@ -4,24 +4,19 @@ import "Structs.wdl"
 
 workflow AnnotateDeNovo {
   input {
-    File callset   # Callset produced by the gCNV pipeline
-    File pedigree  # Pedigree for the entire cohort
-    File intervals # gCNV intervals
-
-    String runtime_docker 
-
+    File sample_batch_map   # file with batch ID to sample ID mapping
+    Array[String] batch_ids # batch IDs
+    File callset            # Callset produced by the GATK-gCNV pipeline
+    File intervals          # GATK-gCNV intervals
+    File pedigree           # Pedigree for the entire cohort
     Array[File] dcr_files   # denoised copy ratio files
-    Array[File] dcr_indices # index files
+    Array[File] dcr_indices # denoised copy ratio index files
 
-    # This option is for when the dRC matrix filenames are not in the expected
-    # format to allowing parsing of the batch IDs. `batch_ids` is expected to
-    # be parallel to `dcr_files` such that `dcr_files[i]` is the dCR matrix
-    # for the batch with ID `batch_ids[i]`.
-    Array[String]? batch_ids
+    String runtime_docker
 
-    Boolean? recal_freq # recalulate variant frequency (default is true)
-    String? hq_cols     # list of columns that indicate high-quality calls
-    Float? max_freq     # maximum variant frequency to consider
+    Boolean? recal_freq     # recalulate variant frequency (default is true)
+    String? hq_cols         # list of columns that indicate high-quality calls
+    Float? max_freq         # maximum variant frequency to consider
     Boolean? skip_allosomes # skip de novo calling on allosomes
 
     RuntimeAttr? runtime_attr_override
@@ -32,19 +27,15 @@ workflow AnnotateDeNovo {
       callset = callset,
       pedigree = pedigree,
       intervals = intervals,
-
-      runtime_docker = runtime_docker,
-
+      sample_batch_map = sample_batch_map,
+      batch_ids = batch_ids,
       dcr_files = dcr_files,
       dcr_indices = dcr_indices,
-
-      batch_ids = batch_ids,
-
+      runtime_docker = runtime_docker,
       recal_freq = recal_freq,
       hq_cols = hq_cols,
       max_freq = max_freq,
       skip_allosomes = skip_allosomes,
-
       runtime_attr_override = runtime_attr_override
   }
 
@@ -58,13 +49,12 @@ task DeNovo {
     File callset
     File pedigree
     File intervals
-
-    String runtime_docker
-
+    File sample_batch_map
+    Array[String] batch_ids
     Array[File] dcr_files
     Array[File] dcr_indices
 
-    Array[String]? batch_ids
+    String runtime_docker
 
     Boolean recal_freq = true
     String? hq_cols
@@ -77,10 +67,10 @@ task DeNovo {
   Float input_size = size(dcr_files, 'GB') + size(dcr_indices, 'GB') + size(callset, 'GB') +
     size(pedigree, 'GB') + size(intervals, 'GB')
   Float output_size = size(callset, 'GB')
-  Int disk_size_gb = ceil(input_size + output_size) + 8
+  Int disk_size_gb = ceil(input_size + output_size) + 16
 
   RuntimeAttr runtime_default = object {
-    mem_gb: 4,
+    mem_gb: 16,
     cpu_cores: 4,
     disk_gb: disk_size_gb,
     boot_disk_gb: 16,
@@ -90,9 +80,6 @@ task DeNovo {
   RuntimeAttr runtime_attr = select_first([runtime_attr_override, runtime_default])
 
   Int cpus = select_first([runtime_attr.cpu_cores, runtime_default.cpu_cores])
-
-  Array[String] batch_ids_arr = select_first([batch_ids, []])
-  Boolean make_dcr_map = length(batch_ids_arr) > 0
 
   runtime {
     memory: '${select_first([runtime_attr.mem_gb, runtime_default.mem_gb])} GB'
@@ -111,12 +98,8 @@ task DeNovo {
 
     dcr_paths='~{write_lines(dcr_files)}'
     cat '~{write_lines(dcr_indices)}' | xargs -- touch -c -m
-    if [[ '~{make_dcr_map}' = 'true' ]]; then
-      paste -d '\t' '~{write_lines(batch_ids_arr)}' "${dcr_paths}" > dcrs.tsv
-      dcrs=dcrs.tsv
-    else
-      dcrs="${dcr_paths}"
-    fi
+    paste -d '\t' '~{write_lines(batch_ids)}' "${dcr_paths}" > dcrs.tsv
+
     Rscript /opt/gcnv/scripts/annotate_denovo_cnv.R \
       ~{if recal_freq then '' else '--no-recal-freq'} \
       ~{if defined(hq_cols) then '--hq-cols ~{hq_cols}' else ''} \
@@ -126,7 +109,7 @@ task DeNovo {
       '~{callset}' \
       '~{intervals}' \
       '~{pedigree}' \
-      "${dcrs}" \
+      dcrs.tsv \
       'denovo_annotated_calls.tsv'
     gzip 'denovo_annotated_calls.tsv'
   >>>

@@ -4,17 +4,16 @@ import "Structs.wdl"
 
 workflow PlotCNVEvidence {
   input {
-    File callset
-    Int calls_per_split = 300
-
-    File intervals # gCNV intervals
+    File callset            # GATK-gCNV callset
+    File intervals          # GATK-gCNV intervals
+    Array[String] batch_ids # batch IDs
+    Array[File] dcr_files   # denoised copy ratio files
+    Array[File] dcr_indices # denoised copy ratio index files
 
     String runtime_docker
 
-    Array[File] dcr_files   # denoised copy ratio files
-    Array[File] dcr_indices # index files
+    Int calls_per_split = 300 # number of calls per shard
 
-    Array[String]? batch_ids
     RuntimeAttr? runtime_override_split_callset
     RuntimeAttr? runtime_override_plot_rd
     RuntimeAttr? runtime_override_merge_plots
@@ -33,13 +32,12 @@ workflow PlotCNVEvidence {
       input:
         callset = split,
         intervals = intervals,
-
-        runtime_docker = runtime_docker,
-
+        batch_ids = batch_ids,
         dcr_files = dcr_files,
         dcr_indices = dcr_indices,
 
-        batch_ids = batch_ids,
+        runtime_docker = runtime_docker,
+
         runtime_attr_override = runtime_override_plot_rd
     }
   }
@@ -67,10 +65,10 @@ task SplitCallset {
   Float input_size = size(callset, "GB")
 
   RuntimeAttr runtime_default = object {
-    mem_gb: 1,
+    mem_gb: 3.75,
     cpu_cores: 1,
     disk_gb: ceil(input_size * 2) + 16,
-    boot_disk_gb: 16,
+    boot_disk_gb: 8,
     preemptible_tries: 3,
     max_retries: 1
   }
@@ -125,13 +123,12 @@ task PlotRd {
   input {
     File callset
     File intervals
-
-    String runtime_docker
-
+    Array[String] batch_ids
     Array[File] dcr_files
     Array[File] dcr_indices
 
-    Array[String]? batch_ids
+    String runtime_docker
+
     RuntimeAttr? runtime_attr_override
   }
 
@@ -139,17 +136,14 @@ task PlotRd {
   Int disk_size_gb = ceil(input_size) * 2 + 16
 
   RuntimeAttr runtime_default = object {
-    mem_gb: 4,
+    mem_gb: 3.75,
     cpu_cores: 1,
     disk_gb: disk_size_gb,
-    boot_disk_gb: 16,
+    boot_disk_gb: 8,
     preemptible_tries: 3,
     max_retries: 0
   }
   RuntimeAttr runtime_attr = select_first([runtime_attr_override, runtime_default])
-
-  Array[String] batch_ids_arr = select_first([batch_ids, []])
-  Boolean make_dcr_map = length(batch_ids_arr) > 0
 
   runtime {
     memory: '${select_first([runtime_attr.mem_gb, runtime_default.mem_gb])} GB'
@@ -168,16 +162,12 @@ task PlotRd {
 
     dcr_paths='~{write_lines(dcr_files)}'
     cat '~{write_lines(dcr_indices)}' | xargs -- touch -c -m
-    if [[ '~{make_dcr_map}' = 'true' ]]; then
-      paste -d '\t' '~{write_lines(batch_ids_arr)}' "${dcr_paths}" > dcrs.tsv
-      dcrs=dcrs.tsv
-    else
-      dcrs="${dcr_paths}"
-    fi
+    paste -d '\t' '~{write_lines(batch_ids)}' "${dcr_paths}" > dcrs.tsv
+
     Rscript /opt/gcnv/scripts/plot_cnv_evidence.R \
       '~{callset}' \
       '~{intervals}' \
-      "${dcrs}" \
+      dcrs.tsv \
       'rd_plots'
     tar --create --gzip --file='rd_plots.tar.gz' 'rd_plots'
   >>>
@@ -197,10 +187,10 @@ task MergePlots {
   Float input_size = size(plots, "GB")
 
   RuntimeAttr runtime_default = object {
-    mem_gb: 1,
+    mem_gb: 3.75,
     cpu_cores: 1,
     disk_gb: ceil(input_size * 5) + 16,
-    boot_disk_gb: 16,
+    boot_disk_gb: 8,
     preemptible_tries: 3,
     max_retries: 1
   }

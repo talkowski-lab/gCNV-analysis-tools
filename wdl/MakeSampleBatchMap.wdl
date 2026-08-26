@@ -18,6 +18,7 @@ workflow MakeSampleBatchMap {
 
   output {
     File map = MakeMap.map
+    String batch_id = MakeMap.batch_id
   }
 }
 
@@ -48,10 +49,12 @@ task MakeMap {
     if [[ -n '~{sample_set_id_trim_regex}' ]]; then
       batch_id="$(awk -vbatch_id="${batch_id}" -vregex="${sample_set_id_trim_regex}" 'BEGIN{sub(regex, "", batch_id); print batch_id}')"
     fi
-    awk '{print batch_id "\t" $1}' batch_id="${batch_id}" '~{write_lines(sample_ids)}' > sample_batch_map.tsv
+    awk '{print batch_id "\t" $1}' batch_id="${batch_id}" '~{write_lines(sample_ids)}' > '~{sample_set_id}-batch_map.tsv'
+    printf '%s\n' "${batch_id}" > batch_id_file
   >>>
 
   output {
     File map = "~{sample_set_id}-batch_map.tsv"
+    String batch_id = read_string("batch_id_file")
   }
 }

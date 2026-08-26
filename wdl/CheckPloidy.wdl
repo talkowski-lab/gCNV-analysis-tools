@@ -1,20 +1,15 @@
 version 1.0
 
 import "Structs.wdl"
-import "MakeSampleBatchMap.wdl" as msbm
 
 workflow CheckPloidy {
   input {
-    # MakeSampleBatchMap ------------------------------------------------------
-    Array[String] sample_set_ids
-    File callset
-    String? sample_set_id_trim_regex
-
-    # CheckContigsPloidy -------------------------------------------------------------
-    Array[File] dcr_files
-    Array[File] dcr_indices
-    Array[String]? contigs
-    Boolean? is_hg19
+    File sample_batch_map   # file with batch ID to sample ID mapping
+    Array[String] batch_ids # batch IDs
+    Array[File] dcr_files   # denoised copy ratio files
+    Array[File] dcr_indices # denoised copy ratio index files
+    Array[String]? contigs  # chromosomes to check
+    Boolean? is_hg19        # assume hg19 chromosome names
 
     String runtime_docker
   }
@@ -33,19 +28,11 @@ workflow CheckPloidy {
   Array[String] default_contigs = if hg19 then hg19_contigs else hg38_contigs
   Array[String] ploidy_contigs = select_first([contigs, default_contigs])
 
-  call msbm.MakeSampleBatchMap {
-    input:
-      sample_set_ids = sample_set_ids,
-      callset = callset,
-      runtime_docker = runtime_docker,
-      sample_set_id_trim_regex = sample_set_id_trim_regex
-  }
-
   scatter (co in ploidy_contigs) {
     call CheckContigsPloidy {
       input:
-        sample_batch_map = MakeSampleBatchMap.sample_batch_map,
-        batch_ids = MakeSampleBatchMap.trimmed_sample_set_ids,
+        sample_batch_map = sample_batch_map,
+        batch_ids = batch_ids,
         dcr_files = dcr_files,
         dcr_indices = dcr_indices,
         contigs = [co],
@@ -91,7 +78,7 @@ task CheckContigsPloidy {
     mem_gb: mem_gb,
     cpu_cores: 1,
     disk_gb: disk_size_gb,
-    boot_disk_gb: 16,
+    boot_disk_gb: 8,
     preemptible_tries: 3,
     max_retries: 1
   }
@@ -141,10 +128,10 @@ task MergePloidy {
   Int disk_size_gb = ceil(input_size * 2) + ceil(output_size) + 8
 
   RuntimeAttr runtime_default = object {
-    mem_gb: 4,
+    mem_gb: 3.75,
     cpu_cores: 1,
     disk_gb: disk_size_gb,
-    boot_disk_gb: 16,
+    boot_disk_gb: 8,
     preemptible_tries: 3,
     max_retries: 1
   }

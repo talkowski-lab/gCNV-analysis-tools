@@ -4,34 +4,29 @@ import "Structs.wdl"
 
 workflow PlotDeNovoEvidence {
   input {
-    Array[File] sample_batch_maps
-
-    File denovo    # de novo calls
-    File intervals # gCNV intervals
-    File pedigree  # Pedigree for the entire cohort
+    File sample_batch_map   # file with batch ID to sample ID mapping
+    Array[String] batch_ids # batch IDs
+    File denovos            # callset with de novos annotated
+    File intervals          # GATK-gCNV intervals
+    File pedigree           # pedigree for the entire cohort
+    Array[File] dcr_files   # denoised copy ratio files
+    Array[File] dcr_indices # denoised copy ratio index files
 
     String runtime_docker
 
-    Array[File] dcr_files   # denoised copy ratio files
-    Array[File] dcr_indices # index files
-
-    Array[String]? batch_ids
     RuntimeAttr? runtime_attr_override
   }
 
   call PlotRD {
     input:
-      sample_batch_maps = sample_batch_maps,
-      denovo = denovo,
-      pedigree = pedigree,
+      sample_batch_map = sample_batch_map,
+      batch_ids = batch_ids,
+      denovos = denovos,
       intervals = intervals,
-
-      runtime_docker = runtime_docker,
-
+      pedigree = pedigree,
       dcr_files = dcr_files,
       dcr_indices = dcr_indices,
-
-      batch_ids = batch_ids,
+      runtime_docker = runtime_docker,
       runtime_attr_override = runtime_attr_override
   }
 
@@ -42,40 +37,36 @@ workflow PlotDeNovoEvidence {
 
 task PlotRD {
   input {
-    Array[File] sample_batch_maps
-    File denovo
-    File pedigree
+    File sample_batch_map
+    Array[String] batch_ids
+    File denovos
     File intervals
-
-    String runtime_docker
-
+    File pedigree
     Array[File] dcr_files
     Array[File] dcr_indices
 
-    Array[String]? batch_ids
+    String runtime_docker
+
     RuntimeAttr? runtime_attr_override
   }
 
-  Float input_size = (1.2 * size(dcr_files, 'GB')) + size(denovo, 'GB') + size(pedigree, 'GB') + (size(sample_batch_maps, 'GB') * 2)
-  Int disk_size_gb = ceil(input_size) + 8
+  Float input_size = (1.2 * size(dcr_files, 'GB')) + size(denovos, 'GB') + size(pedigree, 'GB') + (size(sample_batch_map, 'GB') * 2)
+  Int disk_size_gb = ceil(input_size) + 16
 
   RuntimeAttr runtime_default = object {
-    mem_gb: 2,
-    cpu_cores: 1,
+    mem_gb: 8,
+    cpu_cores: 2,
     disk_gb: disk_size_gb,
-    boot_disk_gb: 16,
+    boot_disk_gb: 8,
     preemptible_tries: 3,
-    max_retries: 0
+    max_retries: 1
   }
   RuntimeAttr runtime_attr = select_first([runtime_attr_override, runtime_default])
 
   Int cpus = select_first([runtime_attr.cpu_cores, runtime_default.cpu_cores])
 
-  Array[String] batch_ids_arr = select_first([batch_ids, []])
-  Boolean make_dcr_map = length(batch_ids_arr) > 0
-
   runtime {
-    memory: '${select_first([runtime_attr.mem_gb, runtime_default.mem_gb])} GB'
+    memory: '${select_first([runtime_attr.mem_gb, runtime_default.mem_gb])} GiB'
     disks: 'local-disk ${select_first([runtime_attr.disk_gb, runtime_default.disk_gb])} HDD'
     cpu: cpus
     preemptible: select_first([runtime_attr.preemptible_tries, runtime_default.preemptible_tries])
@@ -91,20 +82,14 @@ task PlotRD {
 
     dcr_paths='~{write_lines(dcr_files)}'
     cat '~{write_lines(dcr_indices)}' | xargs -- touch -c -m
-    if [[ '~{make_dcr_map}' = 'true' ]]; then
-      paste -d '\t' '~{write_lines(batch_ids_arr)}' "${dcr_paths}" > dcrs.tsv
-      dcrs=dcrs.tsv
-    else
-      dcrs="${dcr_paths}"
-    fi
+    paste -d '\t' '~{write_lines(batch_ids)}' "${dcr_paths}" > dcrs.tsv
 
-    cat '~{write_lines(sample_batch_maps)}' | xargs cat > sample_batch_map.tsv
     Rscript /opt/gcnv/scripts/plot_denovo_evidence.R \
-      '~{denovo}' \
-      'sample_batch_map.tsv' \
+      '~{denovos}' \
+      '~{sample_batch_map}' \
       '~{intervals}' \
       '~{pedigree}' \
-      "${dcrs}" \
+      dcrs.tsv \
       'rd_plots'
     tar --create --gzip --file='rd_plots.tar.gz' 'rd_plots'
   >>>

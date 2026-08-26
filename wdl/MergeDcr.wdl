@@ -4,8 +4,9 @@ import "Structs.wdl"
 
 workflow MergeDcr {
   input {
-    Array[File] sample_dcrs
-    String sample_set_id
+    Array[File] sample_dcrs # per-sample denoised copy ratio files
+    String sample_set_id    # sample set ID
+
     String runtime_docker
     RuntimeAttr? runtime_override_merge
   }
