@@ -52,6 +52,6 @@ task MakeMap {
   >>>
 
   output {
-    File map = 'sample_batch_map.tsv'
+    File map = "~{sample_set_id}-batch_map.tsv"
   }
 }
