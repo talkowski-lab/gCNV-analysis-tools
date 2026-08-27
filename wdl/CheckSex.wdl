@@ -1,7 +1,5 @@
 version 1.0
 
-import "Structs.wdl"
-
 workflow CheckSex {
   input {
     Array[String] batch_ids # batch IDs
@@ -9,8 +7,6 @@ workflow CheckSex {
     Array[File] dcr_indices # denoised copy ratio index files
 
     String runtime_docker
-
-    RuntimeAttr? runtime_attr_override
   }
 
   call EstimatePloidy {
@@ -19,7 +15,6 @@ workflow CheckSex {
       dcr_files = dcr_files,
       dcr_indices = dcr_indices,
       runtime_docker = runtime_docker,
-      runtime_attr_override = runtime_attr_override
   }
 
   output {
@@ -35,32 +30,27 @@ task EstimatePloidy {
 
     String runtime_docker
 
-    RuntimeAttr? runtime_attr_override
+    Int? boot_disk_gb
+    Int? cpus
+    Int? disk_gb
+    Float? mem_gib
+    Int? max_retries
+    Int? preemptible_tries
   }
 
-  Float input_size = size(dcr_files, 'GB') + size(dcr_indices, 'GB')
-  Int disk_size_gb = ceil(input_size) + 16
+  Float inputs_size_gb = size(dcr_files, "GB") + size(dcr_indices, "GB")
+  Int default_disk_gb = ceil(inputs_size_gb) + 16
 
-  RuntimeAttr runtime_default = object {
-    mem_gb: 16,
-    cpu_cores: 4,
-    disk_gb: disk_size_gb,
-    boot_disk_gb: 16,
-    preemptible_tries: 3,
-    max_retries: 0
-  }
-  RuntimeAttr runtime_attr = select_first([runtime_attr_override, runtime_default])
-
-  Int cpus = select_first([runtime_attr.cpu_cores, runtime_default.cpu_cores])
+  Int runtime_cpus = select_first([cpus, 4])
 
   runtime {
-    memory: '${select_first([runtime_attr.mem_gb, runtime_default.mem_gb])} GB'
-    disks: 'local-disk ${select_first([runtime_attr.disk_gb, runtime_default.disk_gb])} HDD'
-    cpu: cpus
-    preemptible: select_first([runtime_attr.preemptible_tries, runtime_default.preemptible_tries])
-    maxRetries: select_first([runtime_attr.max_retries, runtime_default.max_retries])
+    bootDiskSizeGb: select_first([boot_disk_gb, 8])
+    cpu: runtime_cpus
+    disks: "local-disk ${select_first([disk_gb, default_disk_gb])} HDD"
     docker: runtime_docker
-    bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, runtime_default.boot_disk_gb])
+    maxRetries: select_first([max_retries, 1])
+    memory: "${select_first([mem_gib, 16])} GiB"
+    preemptible: select_first([preemptible_tries, 3])
   }
 
   command <<<
@@ -73,7 +63,7 @@ task EstimatePloidy {
     paste -d '\t' '~{write_lines(batch_ids)}' "${dcr_paths}" > dcrs.tsv
 
     Rscript /opt/gcnv/scripts/check_sex.R \
-      --cpus ~{cpus} \
+      --cpus ~{runtime_cpus} \
       dcrs.tsv \
       'sex_ploidy.tsv'
     gzip 'sex_ploidy.tsv'

@@ -27,7 +27,7 @@ task MakeStandardDCR {
     String runtime_docker
   }
 
-  Int disk_size_gb = ceil(size(dcr, 'GB') * 2) + 8
+  Int default_disk_gb = ceil(size(dcr, "GB") * 2) + 8
 
   command <<<
     set -o errexit
@@ -42,17 +42,17 @@ task MakeStandardDCR {
   >>>
 
   runtime {
-    memory: '512 MB'
-    disks: 'local-disk ${disk_size_gb} HDD'
+    bootDiskSizeGb: 8
     cpu: 1
-    preemptible: 3
-    maxRetries: 1
+    disks: "local-disk ${default_disk_gb} HDD"
     docker: runtime_docker
-    bootDiskSizeGb: 16
+    maxRetries: 1
+    memory: "3.75 GiB"
+    preemptible: 3
   }
 
   output {
-    File std_dcr = '~{batch_id}.dcr.bed.gz'
-    File std_dcr_index = '~{batch_id}.dcr.bed.gz.tbi'
+    File std_dcr = "~{batch_id}.dcr.bed.gz"
+    File std_dcr_index = "~{batch_id}.dcr.bed.gz.tbi"
   }
 }

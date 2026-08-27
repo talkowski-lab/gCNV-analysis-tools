@@ -1,7 +1,5 @@
 version 1.0
 
-import "Structs.wdl"
-
 workflow PlotDeNovoEvidence {
   input {
     File sample_batch_map   # file with batch ID to sample ID mapping
@@ -13,8 +11,6 @@ workflow PlotDeNovoEvidence {
     Array[File] dcr_indices # denoised copy ratio index files
 
     String runtime_docker
-
-    RuntimeAttr? runtime_attr_override
   }
 
   call PlotRD {
@@ -26,8 +22,7 @@ workflow PlotDeNovoEvidence {
       pedigree = pedigree,
       dcr_files = dcr_files,
       dcr_indices = dcr_indices,
-      runtime_docker = runtime_docker,
-      runtime_attr_override = runtime_attr_override
+      runtime_docker = runtime_docker
   }
 
   output {
@@ -47,32 +42,30 @@ task PlotRD {
 
     String runtime_docker
 
-    RuntimeAttr? runtime_attr_override
+    Int? boot_disk_gb
+    Int? cpus
+    Int? disk_gb
+    Float? mem_gib
+    Int? max_retries
+    Int? preemptible_tries
   }
 
-  Float input_size = (1.2 * size(dcr_files, 'GB')) + size(denovos, 'GB') + size(pedigree, 'GB') + (size(sample_batch_map, 'GB') * 2)
-  Int disk_size_gb = ceil(input_size) + 16
-
-  RuntimeAttr runtime_default = object {
-    mem_gb: 8,
-    cpu_cores: 2,
-    disk_gb: disk_size_gb,
-    boot_disk_gb: 8,
-    preemptible_tries: 3,
-    max_retries: 1
-  }
-  RuntimeAttr runtime_attr = select_first([runtime_attr_override, runtime_default])
-
-  Int cpus = select_first([runtime_attr.cpu_cores, runtime_default.cpu_cores])
+  Float inputs_size_gb = size(sample_batch_map, "GB") +
+    size(denovos, "GB") +
+    size(intervals, "GB") +
+    size(pedigree, "GB") +
+    size(dcr_files, "GB") +
+    size(dcr_indices, "GB")
+  Int default_disk_gb = ceil(inputs_size_gb) * 2 + 16
 
   runtime {
-    memory: '${select_first([runtime_attr.mem_gb, runtime_default.mem_gb])} GiB'
-    disks: 'local-disk ${select_first([runtime_attr.disk_gb, runtime_default.disk_gb])} HDD'
-    cpu: cpus
-    preemptible: select_first([runtime_attr.preemptible_tries, runtime_default.preemptible_tries])
-    maxRetries: select_first([runtime_attr.max_retries, runtime_default.max_retries])
+    bootDiskSizeGb: select_first([boot_disk_gb, 8])
+    cpu: select_first([cpus, 2])
+    disks: "local-disk ${select_first([disk_gb, default_disk_gb])} HDD"
     docker: runtime_docker
-    bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, runtime_default.boot_disk_gb])
+    maxRetries: select_first([max_retries, 1])
+    memory: "${select_first([mem_gib, 8])} GiB"
+    preemptible: select_first([preemptible_tries, 3])
   }
 
   command <<<
@@ -95,6 +88,6 @@ task PlotRD {
   >>>
 
   output {
-    File plots = 'rd_plots.tar.gz'
+    File plots = "rd_plots.tar.gz"
   }
 }

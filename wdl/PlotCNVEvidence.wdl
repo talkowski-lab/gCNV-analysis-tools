@@ -1,7 +1,5 @@
 version 1.0
 
-import "Structs.wdl"
-
 workflow PlotCNVEvidence {
   input {
     File callset            # GATK-gCNV callset
@@ -13,18 +11,13 @@ workflow PlotCNVEvidence {
     String runtime_docker
 
     Int calls_per_split = 300 # number of calls per shard
-
-    RuntimeAttr? runtime_override_split_callset
-    RuntimeAttr? runtime_override_plot_rd
-    RuntimeAttr? runtime_override_merge_plots
   }
 
   call SplitCallset {
     input:
       callset = callset,
       calls_per_split = calls_per_split,
-      runtime_docker = runtime_docker,
-      runtime_attr_override = runtime_override_split_callset
+      runtime_docker = runtime_docker
   }
 
   scatter (split in SplitCallset.splits) {
@@ -36,17 +29,14 @@ workflow PlotCNVEvidence {
         dcr_files = dcr_files,
         dcr_indices = dcr_indices,
 
-        runtime_docker = runtime_docker,
-
-        runtime_attr_override = runtime_override_plot_rd
+        runtime_docker = runtime_docker
     }
   }
 
   call MergePlots {
     input:
       plots = PlotRd.plots,
-      runtime_docker = runtime_docker,
-      runtime_attr_override = runtime_override_merge_plots
+      runtime_docker = runtime_docker
   }
 
   output {
@@ -59,29 +49,27 @@ task SplitCallset {
     File callset
     Int calls_per_split
     String runtime_docker
-    RuntimeAttr? runtime_attr_override
+
+    Int? boot_disk_gb
+    Int? cpus
+    Int? disk_gb
+    Float? mem_gib
+    Int? max_retries
+    Int? preemptible_tries
   }
 
-  Float input_size = size(callset, "GB")
+  Float inputs_size_gb = size(callset, "GB")
+  Int default_disk_gb = ceil(inputs_size_gb) * 2 + 16
 
-  RuntimeAttr runtime_default = object {
-    mem_gb: 3.75,
-    cpu_cores: 1,
-    disk_gb: ceil(input_size * 2) + 16,
-    boot_disk_gb: 8,
-    preemptible_tries: 3,
-    max_retries: 1
-  }
-  RuntimeAttr runtime_attr = select_first([runtime_attr_override, runtime_default])
-
+  Float default_mem_gib = 3.75
   runtime {
-    memory: '${select_first([runtime_attr.mem_gb, runtime_default.mem_gb])} GB'
-    disks: 'local-disk ${select_first([runtime_attr.disk_gb, runtime_default.disk_gb])} HDD'
-    cpu: select_first([runtime_attr.cpu_cores, runtime_default.cpu_cores])
-    preemptible: select_first([runtime_attr.preemptible_tries, runtime_default.preemptible_tries])
-    maxRetries: select_first([runtime_attr.max_retries, runtime_default.max_retries])
+    bootDiskSizeGb: select_first([boot_disk_gb, 8])
+    cpu: select_first([cpus, 1])
+    disks: "local-disk ${select_first([disk_gb, default_disk_gb])} HDD"
     docker: runtime_docker
-    bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, runtime_default.boot_disk_gb])
+    maxRetries: select_first([max_retries, 1])
+    memory: "${select_first([mem_gib, default_mem_gib])} GiB"
+    preemptible: select_first([preemptible_tries, 3])
   }
 
   command <<<
@@ -129,30 +117,28 @@ task PlotRd {
 
     String runtime_docker
 
-    RuntimeAttr? runtime_attr_override
+    Int? boot_disk_gb
+    Int? cpus
+    Int? disk_gb
+    Float? mem_gib
+    Int? max_retries
+    Int? preemptible_tries
   }
 
-  Float input_size = size(dcr_files, 'GB') + size(callset, 'GB')
-  Int disk_size_gb = ceil(input_size) * 2 + 16
-
-  RuntimeAttr runtime_default = object {
-    mem_gb: 3.75,
-    cpu_cores: 1,
-    disk_gb: disk_size_gb,
-    boot_disk_gb: 8,
-    preemptible_tries: 3,
-    max_retries: 0
-  }
-  RuntimeAttr runtime_attr = select_first([runtime_attr_override, runtime_default])
+  Float inputs_size_gb = size(callset, "GB") +
+    size(intervals, "GB") +
+    size(dcr_files, "GB") +
+    size(dcr_indices, "GB")
+  Int default_disk_gb = ceil(inputs_size_gb) * 2 + 16
 
   runtime {
-    memory: '${select_first([runtime_attr.mem_gb, runtime_default.mem_gb])} GB'
-    disks: 'local-disk ${select_first([runtime_attr.disk_gb, runtime_default.disk_gb])} HDD'
-    cpu: select_first([runtime_attr.cpu_cores, runtime_default.cpu_cores])
-    preemptible: select_first([runtime_attr.preemptible_tries, runtime_default.preemptible_tries])
-    maxRetries: select_first([runtime_attr.max_retries, runtime_default.max_retries])
+    bootDiskSizeGb: select_first([boot_disk_gb, 8])
+    cpus: select_first([cpus, 2])
+    disks: "local-disk ${select_first([disk_gb, default_disk_gb])} HDD"
     docker: runtime_docker
-    bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, runtime_default.boot_disk_gb])
+    maxRetries: select_first([max_retries, 1])
+    memory: "${select_first([mem_gib, 8])} GiB"
+    preemptible: select_first([preemptible_tries, 3])
   }
 
   command <<<
@@ -173,7 +159,7 @@ task PlotRd {
   >>>
 
   output {
-    File plots = 'rd_plots.tar.gz'
+    File plots = "rd_plots.tar.gz"
   }
 }
 
@@ -181,29 +167,27 @@ task MergePlots {
   input {
     Array[File] plots
     String runtime_docker
-    RuntimeAttr? runtime_attr_override
+
+    Int? boot_disk_gb
+    Int? cpus
+    Int? disk_gb
+    Float? mem_gib
+    Int? max_retries
+    Int? preemptible_tries
   }
 
-  Float input_size = size(plots, "GB")
-
-  RuntimeAttr runtime_default = object {
-    mem_gb: 3.75,
-    cpu_cores: 1,
-    disk_gb: ceil(input_size * 5) + 16,
-    boot_disk_gb: 8,
-    preemptible_tries: 3,
-    max_retries: 1
-  }
-  RuntimeAttr runtime_attr = select_first([runtime_attr_override, runtime_default])
+  Float inputs_size_gb = size(plots, "GB")
+  Int default_disk_gb = ceil(inputs_size_gb * 5) + 16
+  Float default_mem_gib = 3.75
 
   runtime {
-    memory: '${select_first([runtime_attr.mem_gb, runtime_default.mem_gb])} GB'
-    disks: 'local-disk ${select_first([runtime_attr.disk_gb, runtime_default.disk_gb])} HDD'
-    cpu: select_first([runtime_attr.cpu_cores, runtime_default.cpu_cores])
-    preemptible: select_first([runtime_attr.preemptible_tries, runtime_default.preemptible_tries])
-    maxRetries: select_first([runtime_attr.max_retries, runtime_default.max_retries])
+    bootDiskSizeGb: select_first([boot_disk_gb, 8])
+    cpus: select_first([cpus, 1])
+    disks: "local-disk ${select_first([disk_gb, default_disk_gb])} HDD"
     docker: runtime_docker
-    bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, runtime_default.boot_disk_gb])
+    maxRetries: select_first([max_retries, 1])
+    memory: "${select_first([mem_gib, default_mem_gib])} GiB"
+    preemptible: select_first([preemptible_tries, 3])
   }
 
   command <<<

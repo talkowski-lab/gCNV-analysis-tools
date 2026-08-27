@@ -30,13 +30,13 @@ task DoConcat {
   Int default_disk_gb = ceil(size(sample_batch_maps, "GB") * 2) + 16
 
   runtime {
-    memory: "3.75 GiB"
-    disks: "local-disk ~{default_disk_gb} HDD"
-    cpus: 1
-    preemptible: 3
-    maxRetries: 1
-    docker: runtime_docker
     bootDiskSizeGb: 8
+    cpus: 1
+    disks: "local-disk ~{default_disk_gb} HDD"
+    docker: runtime_docker
+    maxRetries: 1
+    memory: "3.75 GiB"
+    preemptible: 3
   }
 
   String output_name = "~{default='combined_batch_map' output_name}.tsv"

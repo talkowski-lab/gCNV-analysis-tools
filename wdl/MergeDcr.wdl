@@ -1,22 +1,18 @@
 version 1.0
 
-import "Structs.wdl"
-
 workflow MergeDcr {
   input {
     Array[File] sample_dcrs # per-sample denoised copy ratio files
     String sample_set_id    # sample set ID
 
     String runtime_docker
-    RuntimeAttr? runtime_override_merge
   }
 
   call Merge {
     input:
       sample_dcrs = sample_dcrs,
       sample_set_id = sample_set_id,
-      runtime_docker = runtime_docker,
-      runtime_attr_override = runtime_override_merge
+      runtime_docker = runtime_docker
   }
 
   output {
@@ -30,30 +26,33 @@ task Merge {
     Array[File] sample_dcrs
     String sample_set_id
     String runtime_docker
-    RuntimeAttr? runtime_attr_override
+
+    Int? boot_disk_gb
+    Int? cpus
+    Int? disk_gb
+    Float? mem_gib
+    Int? max_retries
+    Int? preemptible_tries
   }
 
-  Float input_size = size(sample_dcrs, 'GB')
-  Float extra_mem = length(sample_dcrs) * 0.01
-  RuntimeAttr runtime_default = object {
-    mem_gb: 8 + extra_mem,
-    cpu_cores: 4,
-    disk_gb: ceil(input_size * 8) + 16,
-    boot_disk_gb: 8,
-    preemptible_tries: 2,
-    max_retries: 1
-  }
-  RuntimeAttr runtime_attr = select_first([runtime_attr_override, runtime_default])
-  Int cpus = select_first([runtime_attr.cpu_cores, runtime_default.cpu_cores])
+  Float inputs_size_gb = size(sample_dcrs, "GB")
+  Int resource_scale_factor = ceil(length(sample_dcrs) / 500)
+
+  Int default_disk_gb = ceil(inputs_size_gb) * 8 + 16
+
+  Int default_cpus = resource_scale_factor * 2
+  Int default_mem_gib = resource_scale_factor * 16
+
+  Int runtime_cpus = select_first([cpus, default_cpus])
 
   runtime {
-    memory: '${select_first([runtime_attr.mem_gb, runtime_default.mem_gb])} GB'
-    disks: 'local-disk ${select_first([runtime_attr.disk_gb, runtime_default.disk_gb])} SSD'
-    cpu: cpus
-    preemptible: select_first([runtime_attr.preemptible_tries, runtime_default.preemptible_tries])
-    maxRetries: select_first([runtime_attr.max_retries, runtime_default.max_retries])
+    bootDiskSizeGb: select_first([boot_disk_gb, 8])
+    cpu: runtime_cpus
+    disks: "local-disk ${select_first([disk_gb, default_disk_gb])} SSD"
     docker: runtime_docker
-    bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, runtime_default.boot_disk_gb])
+    maxRetries: select_first([max_retries, 1])
+    memory: "${select_first([mem_gib, default_mem_gib])} GiB"
+    preemptible: select_first([preemptible_tries, 3])
   }
 
   String output_name = sample_set_id + "_COHORT.dcr.bed.gz"
@@ -117,7 +116,7 @@ EOF
 
     duckdb -bail dcr.duckdb < commands.sql \
       | awk 'FNR==1{$0 = "#" $0} 1' \
-      | bgzip --threads ~{cpus} -c > '~{output_name}'
+      | bgzip --threads ~{runtime_cpus} -c > '~{output_name}'
     tabix --sequence 1 --begin 2 --end 3 --comment '#' --zero-based '~{output_name}'
 
     declare -i all_count not_null_count

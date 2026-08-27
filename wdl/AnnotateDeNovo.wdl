@@ -1,7 +1,5 @@
 version 1.0
 
-import "Structs.wdl"
-
 workflow AnnotateDeNovo {
   input {
     File sample_batch_map   # file with batch ID to sample ID mapping
@@ -18,8 +16,6 @@ workflow AnnotateDeNovo {
     String? hq_cols         # list of columns that indicate high-quality calls
     Float? max_freq         # maximum variant frequency to consider
     Boolean? skip_allosomes # skip de novo calling on allosomes
-
-    RuntimeAttr? runtime_attr_override
   }
 
   call DeNovo {
@@ -36,7 +32,6 @@ workflow AnnotateDeNovo {
       hq_cols = hq_cols,
       max_freq = max_freq,
       skip_allosomes = skip_allosomes,
-      runtime_attr_override = runtime_attr_override
   }
 
   output {
@@ -61,34 +56,32 @@ task DeNovo {
     Float? max_freq
     Boolean skip_allosomes = false
 
-    RuntimeAttr? runtime_attr_override
+    Int? boot_disk_gb
+    Int? cpus
+    Int? disk_gb
+    Float? mem_gib
+    Int? max_retries
+    Int? preemptible_tries
   }
 
-  Float input_size = size(dcr_files, 'GB') + size(dcr_indices, 'GB') + size(callset, 'GB') +
-    size(pedigree, 'GB') + size(intervals, 'GB')
-  Float output_size = size(callset, 'GB')
-  Int disk_size_gb = ceil(input_size + output_size) + 16
+  Float inputs_size_gb = size(callset, "GB") +
+    size(pedigree, "GB") +
+    size(intervals, "GB") +
+    size(sample_batch_map, "GB") +
+    size(dcr_files, "GB") +
+    size(dcr_indices, "GB")
+  Int default_disk_gb = ceil(inputs_size_gb) + 50
 
-  RuntimeAttr runtime_default = object {
-    mem_gb: 16,
-    cpu_cores: 4,
-    disk_gb: disk_size_gb,
-    boot_disk_gb: 16,
-    preemptible_tries: 3,
-    max_retries: 0
-  }
-  RuntimeAttr runtime_attr = select_first([runtime_attr_override, runtime_default])
-
-  Int cpus = select_first([runtime_attr.cpu_cores, runtime_default.cpu_cores])
+  Int runtime_cpus = select_first([cpus, 4])
 
   runtime {
-    memory: '${select_first([runtime_attr.mem_gb, runtime_default.mem_gb])} GB'
-    disks: 'local-disk ${select_first([runtime_attr.disk_gb, runtime_default.disk_gb])} HDD'
-    cpu: cpus
-    preemptible: select_first([runtime_attr.preemptible_tries, runtime_default.preemptible_tries])
-    maxRetries: select_first([runtime_attr.max_retries, runtime_default.max_retries])
+    bootDiskSizeGb: select_first([boot_disk_gb, 8])
+    cpu: runtime_cpus
+    disks: "local-disk ${select_first([disk_gb, default_disk_gb])} HDD"
     docker: runtime_docker
-    bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, runtime_default.boot_disk_gb])
+    maxRetries: select_first([max_retries, 1])
+    memory: "${select_first([mem_gib, 16])} GiB"
+    preemptible: select_first([preemptible_tries, 3])
   }
 
   command <<<
@@ -105,7 +98,7 @@ task DeNovo {
       ~{if defined(hq_cols) then '--hq-cols ~{hq_cols}' else ''} \
       ~{if defined(max_freq) then '--max-freq ~{max_freq}' else ''} \
       ~{if skip_allosomes then '--skip-allosomes' else ''} \
-      --cpus ~{cpus} \
+      --cpus ~{runtime_cpus} \
       '~{callset}' \
       '~{intervals}' \
       '~{pedigree}' \

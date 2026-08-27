@@ -1,7 +1,5 @@
 version 1.0
 
-import "Structs.wdl"
-
 workflow CheckPloidy {
   input {
     File sample_batch_map   # file with batch ID to sample ID mapping
@@ -62,36 +60,34 @@ task CheckContigsPloidy {
     Array[String] contigs
     String runtime_docker
 
-    RuntimeAttr? runtime_attr_override
+    Int? boot_disk_gb
+    Int? cpus
+    Int? disk_gb
+    Float? mem_gib
+    Int? max_retries
+    Int? preemptible_tries
   }
 
   Int num_samples = length(read_lines(sample_batch_map))
-  Float input_size = size(dcr_files, 'GB') +
-    size(dcr_indices, 'GB') +
-    size(sample_batch_map, 'GB')
-  Float output_size = num_samples * length(contigs) * 0.000000016
-  Int disk_size_gb = ceil(input_size) + ceil(output_size) + 8
+  Float inputs_size_gb = size(sample_batch_map, "GB") +
+    size(dcr_files, "GB") +
+    size(dcr_indices, "GB")
+  Float output_size_gb = num_samples * length(contigs) * 0.000000016
 
-  Float mem_gb = (ceil(num_samples / 1000) * 1.0) + 1.0
+  Int default_disk_gb = ceil(inputs_size_gb) + ceil(output_size_gb) + 16
 
-  RuntimeAttr runtime_default = object {
-    mem_gb: mem_gb,
-    cpu_cores: 1,
-    disk_gb: disk_size_gb,
-    boot_disk_gb: 8,
-    preemptible_tries: 3,
-    max_retries: 1
-  }
-  RuntimeAttr runtime_attr = select_first([runtime_attr_override, runtime_default])
+  Int resource_scale_factor = ceil(num_samples / 5000)
+  Int default_cpus = resource_scale_factor * 2
+  Int default_mem_gib = resource_scale_factor * 8
 
   runtime {
-    memory: '${select_first([runtime_attr.mem_gb, runtime_default.mem_gb])} GB'
-    disks: 'local-disk ${select_first([runtime_attr.disk_gb, runtime_default.disk_gb])} HDD'
-    cpus: select_first([runtime_attr.cpu_cores, runtime_default.cpu_cores])
-    preemptible: select_first([runtime_attr.preemptible_tries, runtime_default.preemptible_tries])
-    maxRetries: select_first([runtime_attr.max_retries, runtime_default.max_retries])
-    bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, runtime_default.boot_disk_gb])
+    bootDiskSizeGb: select_first([boot_disk_gb, 8])
+    cpus: select_first([cpus, default_cpus])
+    disks: "local-disk ${select_first([disk_gb, default_disk_gb])} HDD"
     docker: runtime_docker
+    maxRetries: select_first([max_retries, 1])
+    memory: "${select_first([mem_gib, default_mem_gib])} GiB"
+    preemptible: select_first([preemptible_tries, 3])
   }
 
   command <<<
@@ -120,31 +116,26 @@ task MergePloidy {
   input {
     Array[File] ploidy_tars
     String runtime_docker
-    RuntimeAttr? runtime_attr_override
+
+    Int? boot_disk_gb
+    Int? cpus
+    Int? disk_gb
+    Float? mem_gib
+    Int? max_retries
+    Int? preemptible_tries
   }
 
-  Float input_size = size(ploidy_tars, 'GB')
-  Float output_size = input_size * 2
-  Int disk_size_gb = ceil(input_size * 2) + ceil(output_size) + 8
-
-  RuntimeAttr runtime_default = object {
-    mem_gb: 3.75,
-    cpu_cores: 1,
-    disk_gb: disk_size_gb,
-    boot_disk_gb: 8,
-    preemptible_tries: 3,
-    max_retries: 1
-  }
-  RuntimeAttr runtime_attr = select_first([runtime_attr_override, runtime_default])
+  Float inputs_size_gb = size(ploidy_tars, "GB")
+  Int default_disk_gb = ceil(inputs_size_gb * 3) + 16
 
   runtime {
-    memory: '${select_first([runtime_attr.mem_gb, runtime_default.mem_gb])} GB'
-    disks: 'local-disk ${select_first([runtime_attr.disk_gb, runtime_default.disk_gb])} HDD'
-    cpus: select_first([runtime_attr.cpu_cores, runtime_default.cpu_cores])
-    preemptible: select_first([runtime_attr.preemptible_tries, runtime_default.preemptible_tries])
-    maxRetries: select_first([runtime_attr.max_retries, runtime_default.max_retries])
-    bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, runtime_default.boot_disk_gb])
+    bootDiskSizeGb: select_first([boot_disk_gb, 8])
+    cpus: select_first([cpus, 2])
+    disks: "local-disk ${select_first([disk_gb, default_disk_gb])} HDD"
     docker: runtime_docker
+    maxRetries: select_first([max_retries, 1])
+    memory: "${select_first([mem_gib, 8])} GiB"
+    preemptible: select_first([preemptible_tries, 3])
   }
 
   command <<<
