@@ -122,12 +122,6 @@ args <- parse_args()
 suppressPackageStartupMessages(library(gelpers))
 suppressPackageStartupMessages(library(parallel))
 
-# Min and max expected average chrX dCR values for XX and XY samples
-XX_MIN <- 1.9
-XX_MAX <- 2.1
-XY_MIN <- 0.9
-XY_MAX <- 1.1
-
 # Maximum sequence length supported by tabix. A hack to get an entire
 # chromosome from a dCR matrix through Rsamtools.
 TABIX_MAX_SEQLEN <- 536870912L
