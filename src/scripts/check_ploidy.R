@@ -3,7 +3,7 @@
 TABIX_MAX_SEQLEN <- 536870912L
 
 usage <- function() {
-'Usage: Rscript make_ploidy_evidence.R SAMPLES CONTIGS DCRS OUTDIR
+'Usage: Rscript check_ploidy.R SAMPLES CONTIGS DCRS OUTDIR
 
 SAMPLES  A two-column, tab-delimited table with all the samples to process.
          The columns must be batch ID and sample ID.
